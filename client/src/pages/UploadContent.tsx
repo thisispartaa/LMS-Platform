@@ -43,7 +43,16 @@ export default function UploadContent() {
       const formData = new FormData();
       formData.append("file", file);
       
-      const response = await apiRequest("POST", "/api/upload", formData);
+      const response = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Upload failed");
+      }
+      
       return response.json() as Promise<UploadResponse>;
     },
     onSuccess: (data) => {
@@ -60,7 +69,7 @@ export default function UploadContent() {
       
       toast({
         title: "File processed successfully",
-        description: "AI analysis completed. Review and edit the results below.",
+        description: `AI analysis completed. Training module created with ${data.quizQuestions} quiz questions.`,
       });
     },
     onError: (error) => {

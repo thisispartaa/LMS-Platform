@@ -71,61 +71,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const document = await storage.createDocument(documentData);
 
+      // Create training module based on the analysis
+      const moduleData = insertTrainingModuleSchema.parse({
+        title: analysis.suggestedTitle,
+        description: analysis.summary,
+        learningStage: analysis.learningStage,
+        status: "draft",
+        documentId: document.id,
+        createdBy: userId,
+        aiGenerated: true,
+      });
+
+      const trainingModule = await storage.createTrainingModule(moduleData);
+
+      // Generate quiz questions for the module
+      const quizQuestions = await generateQuizQuestions(content, analysis.keyTopics);
+      
+      // Save quiz questions to database
+      for (let i = 0; i < quizQuestions.length; i++) {
+        const questionData = insertQuizQuestionSchema.parse({
+          moduleId: trainingModule.id,
+          questionText: quizQuestions[i].questionText,
+          questionType: quizQuestions[i].questionType,
+          options: quizQuestions[i].options || [],
+          correctAnswer: quizQuestions[i].correctAnswer,
+          explanation: quizQuestions[i].explanation,
+          order: i + 1,
+        });
+        
+        await storage.createQuizQuestion(questionData);
+      }
+
       res.json({
         document,
         analysis,
+        trainingModule,
+        quizQuestions: quizQuestions.length,
         content: content.substring(0, 1000) + (content.length > 1000 ? "..." : ""), // Truncate for response
       });
     } catch (error) {
       console.error("Error processing file upload:", error);
-      res.status(500).json({ message: "Failed to process file upload" });
+      res.status(500).json({ message: "Failed to process uploaded file" });
     }
   });
 
-  // Training modules
-  app.get('/api/modules', isAuthenticated, async (req, res) => {
+  // Training Modules routes
+  app.get('/api/training-modules', isAuthenticated, async (req, res) => {
     try {
       const modules = await storage.getTrainingModules();
       res.json(modules);
     } catch (error) {
-      console.error("Error fetching modules:", error);
-      res.status(500).json({ message: "Failed to fetch modules" });
+      console.error("Error fetching training modules:", error);
+      res.status(500).json({ message: "Failed to fetch training modules" });
     }
   });
 
-  app.post('/api/modules', isAuthenticated, async (req: any, res) => {
+  app.get('/api/training-modules/:id', isAuthenticated, async (req, res) => {
+    try {
+      const moduleId = parseInt(req.params.id);
+      const module = await storage.getTrainingModule(moduleId);
+      if (!module) {
+        return res.status(404).json({ message: "Training module not found" });
+      }
+      res.json(module);
+    } catch (error) {
+      console.error("Error fetching training module:", error);
+      res.status(500).json({ message: "Failed to fetch training module" });
+    }
+  });
+
+  app.post('/api/training-modules', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
       const moduleData = insertTrainingModuleSchema.parse({
         ...req.body,
         createdBy: userId,
       });
-
+      
       const module = await storage.createTrainingModule(moduleData);
       res.json(module);
     } catch (error) {
-      console.error("Error creating module:", error);
-      res.status(500).json({ message: "Failed to create module" });
+      console.error("Error creating training module:", error);
+      res.status(500).json({ message: "Failed to create training module" });
     }
   });
 
-  app.get('/api/modules/:id', isAuthenticated, async (req, res) => {
-    try {
-      const moduleId = parseInt(req.params.id);
-      const module = await storage.getTrainingModule(moduleId);
-      
-      if (!module) {
-        return res.status(404).json({ message: "Module not found" });
-      }
-
-      res.json(module);
-    } catch (error) {
-      console.error("Error fetching module:", error);
-      res.status(500).json({ message: "Failed to fetch module" });
-    }
-  });
-
-  app.put('/api/modules/:id', isAuthenticated, async (req, res) => {
+  app.put('/api/training-modules/:id', isAuthenticated, async (req, res) => {
     try {
       const moduleId = parseInt(req.params.id);
       const updates = req.body;
@@ -133,24 +164,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const module = await storage.updateTrainingModule(moduleId, updates);
       res.json(module);
     } catch (error) {
-      console.error("Error updating module:", error);
-      res.status(500).json({ message: "Failed to update module" });
+      console.error("Error updating training module:", error);
+      res.status(500).json({ message: "Failed to update training module" });
     }
   });
 
-  app.delete('/api/modules/:id', isAuthenticated, async (req, res) => {
+  app.delete('/api/training-modules/:id', isAuthenticated, async (req, res) => {
     try {
       const moduleId = parseInt(req.params.id);
       await storage.deleteTrainingModule(moduleId);
-      res.json({ message: "Module deleted successfully" });
+      res.json({ message: "Training module deleted successfully" });
     } catch (error) {
-      console.error("Error deleting module:", error);
-      res.status(500).json({ message: "Failed to delete module" });
+      console.error("Error deleting training module:", error);
+      res.status(500).json({ message: "Failed to delete training module" });
     }
   });
 
-  // Quiz questions
-  app.get('/api/modules/:id/questions', isAuthenticated, async (req, res) => {
+  // Quiz routes
+  app.get('/api/training-modules/:id/questions', isAuthenticated, async (req, res) => {
     try {
       const moduleId = parseInt(req.params.id);
       const questions = await storage.getQuizQuestionsByModule(moduleId);
@@ -158,59 +189,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching quiz questions:", error);
       res.status(500).json({ message: "Failed to fetch quiz questions" });
-    }
-  });
-
-  app.post('/api/modules/:id/generate-quiz', isAuthenticated, async (req, res) => {
-    try {
-      const moduleId = parseInt(req.params.id);
-      const module = await storage.getTrainingModule(moduleId);
-      
-      if (!module) {
-        return res.status(404).json({ message: "Module not found" });
-      }
-
-      // Get document content for quiz generation
-      let content = "";
-      let keyTopics: string[] = [];
-      
-      if (module.documentId) {
-        const document = await storage.getDocument(module.documentId);
-        if (document) {
-          content = document.aiSummary || "";
-          keyTopics = document.keyTopics || [];
-        }
-      }
-
-      if (!content) {
-        content = module.description || "";
-        keyTopics = [module.title];
-      }
-
-      // Generate quiz questions using AI
-      const generatedQuestions = await generateQuizQuestions(content, keyTopics);
-      
-      // Save questions to database
-      const savedQuestions = [];
-      for (let i = 0; i < generatedQuestions.length; i++) {
-        const questionData = insertQuizQuestionSchema.parse({
-          moduleId,
-          questionText: generatedQuestions[i].questionText,
-          questionType: generatedQuestions[i].questionType,
-          options: generatedQuestions[i].options,
-          correctAnswer: generatedQuestions[i].correctAnswer,
-          explanation: generatedQuestions[i].explanation,
-          order: i + 1,
-        });
-        
-        const question = await storage.createQuizQuestion(questionData);
-        savedQuestions.push(question);
-      }
-
-      res.json(savedQuestions);
-    } catch (error) {
-      console.error("Error generating quiz:", error);
-      res.status(500).json({ message: "Failed to generate quiz" });
     }
   });
 
@@ -249,26 +227,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // User assignments
-  app.get('/api/users/:userId/assignments', isAuthenticated, async (req, res) => {
+  // User Management routes
+  app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.params.userId;
-      const assignments = await storage.getUserAssignments(userId);
-      res.json(assignments);
+      const { role } = req.query;
+      const users = role 
+        ? await storage.getUsersByRole(role as string)
+        : await storage.getUsersByRole("employee"); // Default to employees
+      res.json(users);
     } catch (error) {
-      console.error("Error fetching user assignments:", error);
-      res.status(500).json({ message: "Failed to fetch user assignments" });
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
     }
   });
 
+  // Assignment routes
   app.post('/api/assignments', isAuthenticated, async (req: any, res) => {
     try {
-      const assignedBy = req.user.claims.sub;
+      const assignerId = req.user.claims.sub;
       const assignmentData = insertUserModuleAssignmentSchema.parse({
         ...req.body,
-        assignedBy,
+        assignedBy: assignerId,
       });
-
+      
       const assignment = await storage.assignModuleToUser(assignmentData);
       res.json(assignment);
     } catch (error) {
@@ -277,132 +258,42 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.put('/api/assignments/:userId/:moduleId/complete', isAuthenticated, async (req, res) => {
+  app.get('/api/users/:userId/assignments', isAuthenticated, async (req, res) => {
     try {
-      const userId = req.params.userId;
-      const moduleId = parseInt(req.params.moduleId);
-      
-      await storage.completeAssignment(userId, moduleId);
-      res.json({ message: "Assignment completed successfully" });
+      const { userId } = req.params;
+      const assignments = await storage.getUserAssignments(userId);
+      res.json(assignments);
     } catch (error) {
-      console.error("Error completing assignment:", error);
-      res.status(500).json({ message: "Failed to complete assignment" });
+      console.error("Error fetching user assignments:", error);
+      res.status(500).json({ message: "Failed to fetch user assignments" });
     }
   });
 
-  // Quiz results
-  app.post('/api/quiz-results', isAuthenticated, async (req: any, res) => {
+  // Chatbot route
+  app.post('/api/chatbot', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const resultData = insertQuizResultSchema.parse({
-        ...req.body,
-        userId,
-      });
-
-      const result = await storage.createQuizResult(resultData);
-      
-      // Check if user needs review modules based on score
-      const modules = await storage.getTrainingModules();
-      const suggestions = await suggestReviewModules(
-        result.score,
-        result.totalQuestions,
-        "Current Module", // You might want to get the actual module title
-        modules.map(m => ({ id: m.id, title: m.title, learningStage: m.learningStage }))
-      );
-
-      res.json({ result, suggestions });
-    } catch (error) {
-      console.error("Error saving quiz result:", error);
-      res.status(500).json({ message: "Failed to save quiz result" });
-    }
-  });
-
-  app.get('/api/users/:userId/quiz-results', isAuthenticated, async (req, res) => {
-    try {
-      const userId = req.params.userId;
-      const results = await storage.getUserQuizResults(userId);
-      res.json(results);
-    } catch (error) {
-      console.error("Error fetching quiz results:", error);
-      res.status(500).json({ message: "Failed to fetch quiz results" });
-    }
-  });
-
-  // User management
-  app.get('/api/users', isAuthenticated, async (req, res) => {
-    try {
-      const { role } = req.query;
-      let users;
-      
-      if (role) {
-        users = await storage.getUsersByRole(role as string);
-      } else {
-        // Get all users - you might want to add pagination here
-        users = await storage.getUsersByRole("admin");
-        const trainers = await storage.getUsersByRole("trainer");
-        const employees = await storage.getUsersByRole("employee");
-        users = [...users, ...trainers, ...employees];
-      }
-      
-      res.json(users);
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      res.status(500).json({ message: "Failed to fetch users" });
-    }
-  });
-
-  // Chatbot
-  app.post('/api/chat', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
       const { message } = req.body;
-
-      if (!message) {
-        return res.status(400).json({ message: "Message is required" });
-      }
-
-      // Get chat history
+      const userId = req.user.claims.sub;
+      
+      // Get user's recent chat history for context
       const chatHistory = await storage.getUserChatHistory(userId, 5);
       
-      // Get available modules for context
-      const modules = await storage.getTrainingModules();
-      const moduleContext = modules.map(m => ({
-        title: m.title,
-        description: m.description || "",
-        learningStage: m.learningStage,
-      }));
-
-      // Generate AI response
-      const response = await getChatbotResponse(
-        message,
-        chatHistory.map(h => ({ message: h.message, response: h.response })),
-        moduleContext
-      );
-
-      // Save chat message
+      // Get chatbot response
+      const response = await getChatbotResponse(message, chatHistory);
+      
+      // Save the conversation
       const chatData = insertChatMessageSchema.parse({
         userId,
         message,
         response,
       });
-
+      
       await storage.createChatMessage(chatData);
-
+      
       res.json({ response });
     } catch (error) {
-      console.error("Error processing chat message:", error);
-      res.status(500).json({ message: "Failed to process chat message" });
-    }
-  });
-
-  app.get('/api/chat/history', isAuthenticated, async (req: any, res) => {
-    try {
-      const userId = req.user.claims.sub;
-      const history = await storage.getUserChatHistory(userId);
-      res.json(history);
-    } catch (error) {
-      console.error("Error fetching chat history:", error);
-      res.status(500).json({ message: "Failed to fetch chat history" });
+      console.error("Error processing chatbot request:", error);
+      res.status(500).json({ message: "Failed to process chatbot request" });
     }
   });
 

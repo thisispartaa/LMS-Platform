@@ -90,6 +90,8 @@ export interface UploadResponse {
     learningStage: "onboarding" | "foundational" | "intermediate" | "advanced";
     suggestedTitle: string;
   };
+  trainingModule: TrainingModule;
+  quizQuestions: number;
   content: string;
 }
 
