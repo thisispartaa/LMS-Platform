@@ -28,7 +28,7 @@ import {
 } from "lucide-react";
 
 export default function Settings() {
-  const [activeTab, setActiveTab] = useState("general");
+  const [activeTab, setActiveTab] = useState("profile");
   const { toast } = useToast();
   const { user } = useAuth();
 

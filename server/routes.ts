@@ -2,8 +2,9 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { upload, getFileType, processUploadedFile } from "./services/fileProcessor";
-import { generateQuizQuestions, getChatbotResponse, suggestReviewModules } from "./services/openai";
+import { upload, getFileType, extractTextContent } from "./services/fileProcessor";
+import { generateQuizQuestions, getChatbotResponse, suggestReviewModules, analyzeDocument } from "./services/openai";
+import { nanoid } from "nanoid";
 import { 
   insertDocumentSchema,
   insertTrainingModuleSchema,
@@ -43,6 +44,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File upload and processing
   app.post('/api/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
+      console.log('Upload request received:', {
+        hasFile: !!req.file,
+        userId: req.user?.claims?.sub,
+        fileInfo: req.file ? {
+          originalname: req.file.originalname,
+          mimetype: req.file.mimetype,
+          size: req.file.size
+        } : null
+      });
+
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }

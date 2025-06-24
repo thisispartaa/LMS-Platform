@@ -15,7 +15,7 @@ export default function Landing() {
             </div>
             
             <div className="space-y-2">
-              <h1 className="text-2xl font-bold text-neutral-dark">Amazech Training Platform</h1>
+              <h1 className="text-2xl font-bold text-neutral-dark">Amazech University</h1>
               <p className="text-neutral-medium">
                 Welcome to your comprehensive employee training platform with AI-powered content generation and chatbot assistance.
               </p>
