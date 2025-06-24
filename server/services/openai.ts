@@ -22,12 +22,14 @@ export interface QuizQuestion {
 
 export async function analyzeDocument(content: string, fileName: string): Promise<DocumentAnalysis> {
   try {
+    let prompt: string;
+    
     // Ensure we're only processing the actual uploaded content, not any default text
     if (content.includes("Please analyze this training document and generate appropriate content")) {
       // This is our placeholder text, generate content based on filename only
       const cleanFileName = fileName.replace(/\.(pdf|docx|doc)$/i, '').replace(/[-_]/g, ' ');
       
-      const prompt = `
+      prompt = `
         Create training content based on the document title: "${cleanFileName}"
         
         Generate realistic and professional training material that would be appropriate for this topic.
@@ -43,7 +45,7 @@ export async function analyzeDocument(content: string, fileName: string): Promis
       `;
     } else {
       // Process actual document content
-      const prompt = `
+      prompt = `
         Analyze the following training document content and provide a comprehensive analysis.
         Document Name: ${fileName}
         
