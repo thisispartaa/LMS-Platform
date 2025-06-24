@@ -24,21 +24,24 @@ export async function analyzeDocument(content: string, fileName: string): Promis
   try {
     let prompt: string;
     
-    // Ensure we're only processing the actual uploaded content, not any default text
-    if (content.includes("Please analyze this training document and generate appropriate content")) {
-      // This is our placeholder text, generate content based on filename only
+    // Check if this is placeholder/error content or actual document content
+    if (content.includes("Please analyze this training document") || 
+        content.includes("Error reading PDF content") ||
+        content.includes("appears to contain images or non-text content") ||
+        content.length < 50) {
+      // This is placeholder text or error, generate content based on filename only
       const cleanFileName = fileName.replace(/\.(pdf|docx|doc)$/i, '').replace(/[-_]/g, ' ');
       
       prompt = `
-        Create training content based on the document title: "${cleanFileName}"
+        Create realistic training content based on the document title: "${cleanFileName}"
         
-        Generate realistic and professional training material that would be appropriate for this topic.
+        Generate professional training material that would be appropriate for this topic.
         Provide a JSON response with:
         {
-          "summary": "A comprehensive 2-3 paragraph summary based on what this document would likely contain",
-          "keyTopics": ["Array of 5-10 realistic key topics this document would cover"],
+          "summary": "A comprehensive 2-3 paragraph summary based on what this document would likely contain given its title",
+          "keyTopics": ["Array of 5-10 realistic key topics this document would cover based on the title"],
           "learningStage": "onboarding|foundational|intermediate|advanced",
-          "suggestedTitle": "A professional title for this training module"
+          "suggestedTitle": "A professional title for this training module based on the filename"
         }
         
         Make the content professional, realistic, and suitable for corporate training.
@@ -54,8 +57,8 @@ export async function analyzeDocument(content: string, fileName: string): Promis
         
         Please provide a JSON response with the following structure:
         {
-          "summary": "A comprehensive 2-3 paragraph summary of the actual document content",
-          "keyTopics": ["Array of 5-10 key topics actually covered in the document"],
+          "summary": "A comprehensive 2-3 paragraph summary of the ACTUAL document content provided above",
+          "keyTopics": ["Array of 5-10 key topics actually covered in the document content"],
           "learningStage": "onboarding|foundational|intermediate|advanced",
           "suggestedTitle": "A descriptive title based on the actual content"
         }
@@ -66,7 +69,7 @@ export async function analyzeDocument(content: string, fileName: string): Promis
         - "intermediate" for more complex topics requiring some prior knowledge
         - "advanced" for expert-level content and specialized skills
         
-        Base your analysis ONLY on the actual content provided.
+        IMPORTANT: Base your analysis STRICTLY on the actual content provided above. Do not make assumptions.
       `;
     }
 

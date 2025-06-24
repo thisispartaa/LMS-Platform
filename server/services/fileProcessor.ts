@@ -2,6 +2,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs/promises";
 import mammoth from "mammoth";
+import { nanoid } from "nanoid";
 import { analyzeDocument } from "./openai";
 
 // Configure multer for file uploads
@@ -79,34 +80,55 @@ export async function extractTextContent(filePath: string, fileType: "pdf" | "do
 
 async function extractPDFText(filePath: string): Promise<string> {
   try {
-    // Since we don't have a PDF parser installed, we'll return a minimal placeholder
-    // that tells the AI to generate content based on the filename only
+    // For now, we'll return a message indicating PDF text extraction needs implementation
+    const fileName = path.basename(filePath);
+    const stats = await fs.stat(filePath);
+    const fileSizeKB = Math.round(stats.size / 1024);
+    
+    return `PDF Document: ${fileName} (${fileSizeKB}KB)
+
+This PDF file has been uploaded successfully. However, full PDF text extraction requires additional setup. 
+
+For now, please provide the key content or summary of this PDF document manually, or upload the same content as a DOCX file which can be fully processed.
+
+The AI will generate training content based on the filename: "${fileName.replace(/\.(pdf)$/i, '').replace(/[-_]/g, ' ')}"`;
+  } catch (error) {
+    console.error("Error processing PDF file:", error);
     const fileName = path.basename(filePath);
     return `Training Document: ${fileName}
 
-Please analyze this training document and generate appropriate content based on the document title and context. Create relevant training material that would be suitable for professional development and learning objectives.`;
-  } catch (error) {
-    console.error("Error processing PDF file:", error);
-    throw new Error("Failed to process PDF file");
+Error accessing PDF file. Please ensure the file is not corrupted and try uploading again.`;
   }
 }
 
 async function extractDOCXText(filePath: string): Promise<string> {
   try {
     const result = await mammoth.extractRawText({ path: filePath });
+    
+    if (!result.value || result.value.trim().length === 0) {
+      const fileName = path.basename(filePath);
+      return `Training Document: ${fileName}
+
+This DOCX file appears to be empty or contain only formatting/images that couldn't be extracted. Please ensure the document contains readable text content.`;
+    }
+    
     return result.value;
   } catch (error) {
     console.error("Error extracting DOCX text:", error);
-    throw new Error("Failed to extract text from DOCX file");
+    const fileName = path.basename(filePath);
+    return `Training Document: ${fileName}
+
+Error reading DOCX content. The file may be corrupted or in an unsupported format.`;
   }
 }
 
 async function extractVideoMetadata(filePath: string): Promise<string> {
-  // For video files, you might extract metadata and use speech-to-text
-  // For now, we'll return basic file information
+  // For video files, we'll return metadata since we can't extract speech-to-text
   const stats = await fs.stat(filePath);
   const fileName = path.basename(filePath);
-  return `Video file: ${fileName}. Size: ${stats.size} bytes. Video content analysis would require speech-to-text processing or manual transcription. This is a training video file that contains visual and audio content.`;
+  return `Video Training Content: ${fileName}
+
+This is a video training file containing ${Math.round(stats.size / (1024 * 1024))}MB of content. Video analysis requires speech-to-text processing which is not currently implemented. Please provide a transcript or summary document for this video content.`;
 }
 
 export async function processUploadedFile(
