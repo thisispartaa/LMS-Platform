@@ -198,6 +198,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get quiz questions for a specific module
+  app.get('/api/quiz-questions/:moduleId', isAuthenticated, async (req: any, res) => {
+    try {
+      const moduleId = parseInt(req.params.moduleId);
+      const questions = await storage.getQuizQuestionsByModule(moduleId);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching quiz questions:", error);
+      res.status(500).json({ message: "Failed to fetch quiz questions" });
+    }
+  });
+
   // Quiz routes
   app.get('/api/training-modules/:id/questions', isAuthenticated, async (req, res) => {
     try {

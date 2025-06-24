@@ -18,7 +18,12 @@ export default function QuizManagement() {
   // Fetch quiz questions for selected module
   const { data: quizQuestions = [], isLoading: questionsLoading } = useQuery({
     queryKey: ["/api/quiz-questions", selectedModuleId],
-    queryFn: getQueryFn({ on401: "throw" }),
+    queryFn: async () => {
+      if (!selectedModuleId) return [];
+      const response = await fetch(`/api/quiz-questions/${selectedModuleId}`);
+      if (!response.ok) throw new Error('Failed to fetch quiz questions');
+      return response.json();
+    },
     enabled: !!selectedModuleId,
   });
 

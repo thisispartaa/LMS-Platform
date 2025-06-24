@@ -140,12 +140,34 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getTrainingModule(id: number): Promise<TrainingModule | undefined> {
-    const [module] = await db.select().from(trainingModules).where(eq(trainingModules.id, id));
+    const [module] = await db
+      .select({
+        ...getTableColumns(trainingModules),
+        document: {
+          id: documents.id,
+          keyTopics: documents.keyTopics,
+          aiSummary: documents.aiSummary,
+        }
+      })
+      .from(trainingModules)
+      .leftJoin(documents, eq(trainingModules.documentId, documents.id))
+      .where(eq(trainingModules.id, id));
     return module;
   }
 
   async getTrainingModules(): Promise<TrainingModule[]> {
-    return await db.select().from(trainingModules).orderBy(desc(trainingModules.createdAt));
+    return await db
+      .select({
+        ...getTableColumns(trainingModules),
+        document: {
+          id: documents.id,
+          keyTopics: documents.keyTopics,
+          aiSummary: documents.aiSummary,
+        }
+      })
+      .from(trainingModules)
+      .leftJoin(documents, eq(trainingModules.documentId, documents.id))
+      .orderBy(desc(trainingModules.createdAt));
   }
 
   async getTrainingModulesByStage(stage: string): Promise<TrainingModule[]> {
