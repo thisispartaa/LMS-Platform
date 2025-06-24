@@ -1,13 +1,35 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { getQueryFn } from "@/lib/queryClient";
-import { HelpCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { useToast } from "@/hooks/use-toast";
+import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
+import { HelpCircle, Edit, Save, X } from "lucide-react";
+
+const editQuestionSchema = z.object({
+  questionText: z.string().min(10, "Question must be at least 10 characters"),
+  questionType: z.enum(["multiple_choice", "true_false"]),
+  options: z.array(z.string()).optional(),
+  correctAnswer: z.string().min(1, "Correct answer is required"),
+  explanation: z.string().min(10, "Explanation must be at least 10 characters"),
+});
+
+type EditQuestionForm = z.infer<typeof editQuestionSchema>;
 
 export default function QuizManagement() {
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
+  const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
+  const [showEditDialog, setShowEditDialog] = useState(false);
+  const { toast } = useToast();
   
   // Fetch training modules
   const { data: modules = [], isLoading: modulesLoading } = useQuery({
@@ -27,6 +49,33 @@ export default function QuizManagement() {
     enabled: !!selectedModuleId,
   });
 
+  const form = useForm<EditQuestionForm>({
+    resolver: zodResolver(editQuestionSchema),
+  });
+
+  const updateQuestionMutation = useMutation({
+    mutationFn: async (data: EditQuestionForm & { id: number }) => {
+      const response = await apiRequest("PUT", `/api/quiz-questions/${data.id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-questions", selectedModuleId] });
+      setShowEditDialog(false);
+      setEditingQuestion(null);
+      toast({
+        title: "Question updated successfully",
+        description: "The quiz question has been saved.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Update failed",
+        description: "There was an error updating the question.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const getQuestionTypeDisplay = (type: string) => {
     switch (type) {
       case 'multiple_choice':
@@ -36,6 +85,23 @@ export default function QuizManagement() {
       default:
         return type;
     }
+  };
+
+  const handleEditQuestion = (question: any) => {
+    setEditingQuestion(question);
+    form.reset({
+      questionText: question.questionText,
+      questionType: question.questionType,
+      options: question.options || [],
+      correctAnswer: question.correctAnswer,
+      explanation: question.explanation,
+    });
+    setShowEditDialog(true);
+  };
+
+  const handleUpdateQuestion = (data: EditQuestionForm) => {
+    if (!editingQuestion) return;
+    updateQuestionMutation.mutate({ ...data, id: editingQuestion.id });
   };
 
   return (
@@ -112,6 +178,14 @@ export default function QuizManagement() {
                           {question.questionText}
                         </h4>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleEditQuestion(question)}
+                      >
+                        <Edit className="h-4 w-4 mr-1" />
+                        Edit
+                      </Button>
                     </div>
 
                     {/* Options for multiple choice */}
@@ -165,6 +239,146 @@ export default function QuizManagement() {
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Question Dialog */}
+      <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Edit Quiz Question</DialogTitle>
+          </DialogHeader>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleUpdateQuestion)} className="space-y-6">
+              <FormField
+                control={form.control}
+                name="questionText"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Question Text</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Enter your question..."
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="questionType"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Question Type</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select question type" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                        <SelectItem value="true_false">True/False</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              {form.watch("questionType") === "multiple_choice" && (
+                <div className="space-y-3">
+                  <FormLabel>Answer Options</FormLabel>
+                  {[0, 1, 2, 3].map((index) => (
+                    <FormField
+                      key={index}
+                      control={form.control}
+                      name={`options.${index}` as any}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Input
+                              placeholder={`Option ${String.fromCharCode(65 + index)}`}
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  ))}
+                </div>
+              )}
+
+              <FormField
+                control={form.control}
+                name="correctAnswer"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Correct Answer</FormLabel>
+                    <FormControl>
+                      {form.watch("questionType") === "true_false" ? (
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select correct answer" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="true">True</SelectItem>
+                            <SelectItem value="false">False</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      ) : (
+                        <Input
+                          placeholder="Enter the correct answer exactly as written in options"
+                          {...field}
+                        />
+                      )}
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="explanation"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Explanation</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Explain why this is the correct answer..."
+                        className="resize-none"
+                        rows={3}
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <div className="flex justify-end space-x-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowEditDialog(false)}
+                >
+                  <X className="h-4 w-4 mr-1" />
+                  Cancel
+                </Button>
+                <Button type="submit" disabled={updateQuestionMutation.isPending}>
+                  <Save className="h-4 w-4 mr-1" />
+                  {updateQuestionMutation.isPending ? "Saving..." : "Save Changes"}
+                </Button>
+              </div>
+            </form>
+          </Form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

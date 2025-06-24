@@ -145,6 +145,10 @@ This is a comprehensive employee training platform built with a modern full-stac
   - Removed redundant Edit/View buttons from module cards
   - Added Key Topics display in module view and edit dialogs
   - Implemented quiz questions display in Quiz Management tab
+  - Made quiz questions editable with save functionality
+  - Updated user role to admin for parth.b@amazech.com
+  - Fixed Settings tab by commenting out Email Templates section
+  - Enhanced AmazeBot with document-aware responses and training context
 
 ## Changelog
 
