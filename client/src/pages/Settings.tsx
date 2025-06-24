@@ -26,6 +26,30 @@ import {
 export default function Settings() {
   const [activeTab, setActiveTab] = useState("general");
   const { toast } = useToast();
+  const { user } = useAuth();
+
+  const getUserInitials = (user: any) => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName[0]}${user.lastName[0]}`.toUpperCase();
+    }
+    if (user?.email) {
+      return user.email[0].toUpperCase();
+    }
+    return "U";
+  };
+
+  const getUserDisplayName = (user: any) => {
+    if (user?.firstName && user?.lastName) {
+      return `${user.firstName} ${user.lastName}`;
+    }
+    if (user?.firstName) {
+      return user.firstName;
+    }
+    if (user?.email) {
+      return user.email.split("@")[0];
+    }
+    return "Unknown User";
+  };
 
   // General Settings State
   const [platformName, setPlatformName] = useState("Amazech Training Platform");

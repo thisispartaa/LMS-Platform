@@ -137,6 +137,11 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 Changelog:
 - June 24, 2025. Initial setup
+- June 24, 2025. Implemented role-based access control with Admin (parth.b@amazech.com) and Employee (parth@catenate.io) views
+- June 24, 2025. Fixed file upload processing with OpenAI integration for document analysis
+- June 24, 2025. Enhanced AmazeBot chatbot with scrollable interface and message history
+- June 24, 2025. Created training module management with role-based permissions
+- June 24, 2025. Fixed Settings page user profile display issues
 
 ## User Preferences
 

@@ -18,7 +18,7 @@ import TopBar from "@/components/layout/TopBar";
 import ChatbotWidget from "@/components/chatbot/ChatbotWidget";
 
 function Router() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
 
   if (isLoading || !isAuthenticated) {
     return (
@@ -38,10 +38,14 @@ function Router() {
           <Switch>
             <Route path="/" component={Dashboard} />
             <Route path="/modules" component={TrainingModules} />
-            <Route path="/upload" component={UploadContent} />
-            <Route path="/quizzes" component={QuizManagement} />
-            <Route path="/users" component={UserManagement} />
-            <Route path="/analytics" component={Analytics} />
+            {(user?.role === "admin" || user?.role === "trainer") && (
+              <>
+                <Route path="/upload" component={UploadContent} />
+                <Route path="/quizzes" component={QuizManagement} />
+                <Route path="/users" component={UserManagement} />
+                <Route path="/analytics" component={Analytics} />
+              </>
+            )}
             <Route path="/settings" component={Settings} />
             <Route component={NotFound} />
           </Switch>

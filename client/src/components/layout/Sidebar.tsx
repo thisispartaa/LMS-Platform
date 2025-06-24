@@ -13,19 +13,27 @@ import {
   LogOut
 } from "lucide-react";
 
-const navigation = [
-  { name: "Dashboard", href: "/", icon: LayoutDashboard },
-  { name: "Training Modules", href: "/modules", icon: BookOpen },
-  { name: "Upload Content", href: "/upload", icon: Upload },
-  { name: "Quizzes", href: "/quizzes", icon: HelpCircle },
-  { name: "User Management", href: "/users", icon: Users },
-  { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  { name: "Settings", href: "/settings", icon: Settings },
-];
-
 export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
+
+  const baseNavigation = [
+    { name: "Dashboard", href: "/", icon: LayoutDashboard },
+    { name: "Training Modules", href: "/modules", icon: BookOpen },
+  ];
+
+  const adminNavigation = [
+    { name: "Upload Content", href: "/upload", icon: Upload },
+    { name: "Quizzes", href: "/quiz", icon: HelpCircle },
+    { name: "User Management", href: "/users", icon: Users },
+    { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  ];
+
+  const navigation = [
+    ...baseNavigation,
+    ...(user?.role === "admin" || user?.role === "trainer" ? adminNavigation : []),
+    { name: "Settings", href: "/settings", icon: Settings },
+  ];
 
   return (
     <aside className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
