@@ -9,7 +9,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   Settings as SettingsIcon,
@@ -20,7 +23,8 @@ import {
   Bot,
   Save,
   Key,
-  Palette
+  Palette,
+  LogOut
 } from "lucide-react";
 
 export default function Settings() {
@@ -139,28 +143,84 @@ export default function Settings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="general" className="flex items-center space-x-2">
-            <SettingsIcon className="h-4 w-4" />
-            <span>General</span>
-          </TabsTrigger>
-          <TabsTrigger value="email" className="flex items-center space-x-2">
-            <Mail className="h-4 w-4" />
-            <span>Email</span>
-          </TabsTrigger>
-          <TabsTrigger value="notifications" className="flex items-center space-x-2">
-            <Bell className="h-4 w-4" />
-            <span>Notifications</span>
-          </TabsTrigger>
-          <TabsTrigger value="ai" className="flex items-center space-x-2">
-            <Bot className="h-4 w-4" />
-            <span>AI & Automation</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="flex items-center space-x-2">
-            <Shield className="h-4 w-4" />
-            <span>Security</span>
-          </TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
+          <TabsTrigger value="general">Preferences</TabsTrigger>
+          <TabsTrigger value="security">Security</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="profile" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center space-x-2">
+                <Shield className="h-5 w-5" />
+                <span>User Profile</span>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center space-x-4">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={user?.profileImageUrl} alt={getUserDisplayName(user)} />
+                  <AvatarFallback className="text-lg">
+                    {getUserInitials(user)}
+                  </AvatarFallback>
+                </Avatar>
+                <div>
+                  <h3 className="text-xl font-semibold">{getUserDisplayName(user)}</h3>
+                  <p className="text-muted-foreground">{user?.email}</p>
+                  <Badge variant="secondary" className="mt-1">
+                    {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : "User"}
+                  </Badge>
+                </div>
+              </div>
+              
+              <Separator className="my-6" />
+              
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="first-name">First Name</Label>
+                    <Input
+                      id="first-name"
+                      value={user?.firstName || ""}
+                      placeholder="Enter first name"
+                      disabled
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="last-name">Last Name</Label>
+                    <Input
+                      id="last-name"
+                      value={user?.lastName || ""}
+                      placeholder="Enter last name"
+                      disabled
+                    />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={user?.email || ""}
+                    disabled
+                  />
+                </div>
+                
+                <div className="pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => window.location.href = "/api/logout"}
+                    className="w-full"
+                  >
+                    <LogOut className="mr-2 h-4 w-4" />
+                    Sign Out
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="general" className="space-y-6">
           <Card>

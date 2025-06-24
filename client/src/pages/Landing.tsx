@@ -22,17 +22,25 @@ export default function Landing() {
             </div>
 
             <div className="space-y-4">
-              <Button 
-                onClick={() => window.location.href = "/api/login"}
-                className="w-full bg-primary hover:bg-primary-dark"
-                size="lg"
-              >
-                Sign In to Continue
-              </Button>
-              
-              <p className="text-xs text-neutral-medium">
-                Access your training modules, take quizzes, and get help from AmazeBot.
-              </p>
+              <div className="space-y-4">
+                <p className="text-sm text-neutral-medium mb-4">Choose your access level:</p>
+                <Button asChild size="lg" className="w-full bg-primary hover:bg-primary/90">
+                  <a href="/api/login">
+                    <GraduationCap className="mr-2 h-5 w-5" />
+                    Login as Admin (parth.b@amazech.com)
+                  </a>
+                </Button>
+                <Button asChild size="lg" variant="outline" className="w-full">
+                  <a href="/api/login">
+                    <GraduationCap className="mr-2 h-5 w-5" />
+                    Login as Employee (parth@catenate.io)
+                  </a>
+                </Button>
+                
+                <p className="text-xs text-neutral-medium">
+                  Access your training modules, take quizzes, and get help from AmazeBot.
+                </p>
+              </div>
             </div>
           </div>
         </CardContent>

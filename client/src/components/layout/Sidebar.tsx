@@ -24,14 +24,19 @@ export default function Sidebar() {
 
   const adminNavigation = [
     { name: "Upload Content", href: "/upload", icon: Upload },
-    { name: "Quizzes", href: "/quiz", icon: HelpCircle },
+    { name: "Quizzes", href: "/quizzes", icon: HelpCircle },
     { name: "User Management", href: "/users", icon: Users },
     { name: "Analytics", href: "/analytics", icon: BarChart3 },
   ];
 
   const navigation = [
     ...baseNavigation,
-    ...(user?.role === "admin" || user?.role === "trainer" ? adminNavigation : []),
+    ...(user?.role === "admin" || user?.role === "trainer" ? [
+      { name: "Upload Content", href: "/upload", icon: Upload },
+      { name: "Quizzes", href: "/quizzes", icon: HelpCircle },
+      { name: "User Management", href: "/users", icon: Users },
+      { name: "Analytics", href: "/analytics", icon: BarChart3 },
+    ] : []),
     { name: "Settings", href: "/settings", icon: Settings },
   ];
 
