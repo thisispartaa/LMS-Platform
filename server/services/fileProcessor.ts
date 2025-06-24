@@ -77,27 +77,17 @@ export async function extractTextContent(filePath: string, fileType: "pdf" | "do
 }
 
 async function extractPDFText(filePath: string): Promise<string> {
-  try {
-    const pdf = require('pdf-parse');
-    const fs = require('fs');
-    const dataBuffer = fs.readFileSync(filePath);
-    const data = await pdf(dataBuffer);
-    return data.text || 'No text content found in PDF';
-  } catch (error) {
-    console.error('Error extracting PDF text:', error);
-    return 'PDF text extraction failed. Please ensure the file is a valid PDF.';
-  }
+  // For PDF text extraction, you would typically use a library like pdf-parse
+  // For now, we'll return a placeholder that indicates the file type
+  const stats = await fs.stat(filePath);
+  return `PDF document content extraction is not yet implemented. File size: ${stats.size} bytes. This is a placeholder for PDF text content that would be extracted using a PDF parsing library.`;
 }
 
 async function extractDOCXText(filePath: string): Promise<string> {
-  try {
-    const mammoth = require('mammoth');
-    const result = await mammoth.extractRawText({ path: filePath });
-    return result.value || 'No text content found in DOCX';
-  } catch (error) {
-    console.error('Error extracting DOCX text:', error);
-    return 'DOCX text extraction failed. Please ensure the file is a valid Word document.';
-  }
+  // For DOCX text extraction, you would typically use a library like mammoth
+  // For now, we'll return a placeholder that indicates the file type
+  const stats = await fs.stat(filePath);
+  return `DOCX document content extraction is not yet implemented. File size: ${stats.size} bytes. This is a placeholder for DOCX text content that would be extracted using a document parsing library.`;
 }
 
 async function extractVideoMetadata(filePath: string): Promise<string> {

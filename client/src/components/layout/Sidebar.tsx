@@ -13,32 +13,19 @@ import {
   LogOut
 } from "lucide-react";
 
+const navigation = [
+  { name: "Dashboard", href: "/", icon: LayoutDashboard },
+  { name: "Training Modules", href: "/modules", icon: BookOpen },
+  { name: "Upload Content", href: "/upload", icon: Upload },
+  { name: "Quizzes", href: "/quizzes", icon: HelpCircle },
+  { name: "User Management", href: "/users", icon: Users },
+  { name: "Analytics", href: "/analytics", icon: BarChart3 },
+  { name: "Settings", href: "/settings", icon: Settings },
+];
+
 export default function Sidebar() {
   const [location] = useLocation();
   const { user } = useAuth();
-
-  const baseNavigation = [
-    { name: "Dashboard", href: "/", icon: LayoutDashboard },
-    { name: "Training Modules", href: "/modules", icon: BookOpen },
-  ];
-
-  const adminNavigation = [
-    { name: "Upload Content", href: "/upload", icon: Upload },
-    { name: "Quizzes", href: "/quizzes", icon: HelpCircle },
-    { name: "User Management", href: "/users", icon: Users },
-    { name: "Analytics", href: "/analytics", icon: BarChart3 },
-  ];
-
-  const navigation = [
-    ...baseNavigation,
-    ...(user?.role === "admin" || user?.role === "trainer" ? [
-      { name: "Upload Content", href: "/upload", icon: Upload },
-      { name: "Quizzes", href: "/quizzes", icon: HelpCircle },
-      { name: "User Management", href: "/users", icon: Users },
-      { name: "Analytics", href: "/analytics", icon: BarChart3 },
-    ] : []),
-    { name: "Settings", href: "/settings", icon: Settings },
-  ];
 
   return (
     <aside className="w-64 bg-white shadow-lg border-r border-gray-200 flex flex-col">
@@ -59,8 +46,8 @@ export default function Sidebar() {
           const isActive = location === item.href;
           return (
             <Link key={item.name} href={item.href}>
-              <div
-                className={`flex items-center px-4 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
+              <a
+                className={`flex items-center px-4 py-3 rounded-lg font-medium transition-colors ${
                   isActive
                     ? "text-primary bg-blue-50"
                     : "text-neutral-medium hover:text-primary hover:bg-gray-50"
@@ -68,7 +55,7 @@ export default function Sidebar() {
               >
                 <item.icon className="h-5 w-5 mr-3" />
                 {item.name}
-              </div>
+              </a>
             </Link>
           );
         })}

@@ -74,7 +74,7 @@ export default function ChatbotWidget() {
           </CardHeader>
           
           <CardContent className="flex-1 p-0 flex flex-col">
-            <ScrollArea className="flex-1 p-4 max-h-80 overflow-y-auto">
+            <ScrollArea className="flex-1 p-4">
               <div className="space-y-4">
                 {/* Welcome message */}
                 <div className="flex items-start space-x-2">
@@ -116,7 +116,7 @@ export default function ChatbotWidget() {
                       </div>
                       <div className="flex-1">
                         <div className="bg-gray-100 rounded-lg px-3 py-2">
-                          <p className="text-sm text-neutral-dark whitespace-pre-wrap break-words">{chat.response}</p>
+                          <p className="text-sm text-neutral-dark">{chat.response}</p>
                         </div>
                         <p className="text-xs text-neutral-medium mt-1">
                           {new Date(chat.createdAt!).toLocaleTimeString()}

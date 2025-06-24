@@ -2,9 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
-import { upload, getFileType, extractTextContent } from "./services/fileProcessor";
-import { generateQuizQuestions, getChatbotResponse, suggestReviewModules, analyzeDocument } from "./services/openai";
-import { nanoid } from "nanoid";
+import { upload, getFileType, processUploadedFile } from "./services/fileProcessor";
+import { generateQuizQuestions, getChatbotResponse, suggestReviewModules } from "./services/openai";
 import { 
   insertDocumentSchema,
   insertTrainingModuleSchema,
@@ -44,47 +43,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // File upload and processing
   app.post('/api/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
-      console.log('Upload request received:', {
-        hasFile: !!req.file,
-        userId: req.user?.claims?.sub,
-        fileInfo: req.file ? {
-          originalname: req.file.originalname,
-          mimetype: req.file.mimetype,
-          size: req.file.size
-        } : null
-      });
-
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      // Check if user has admin or trainer role
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user || (user.role !== 'admin' && user.role !== 'trainer')) {
-        return res.status(403).json({ message: 'Access denied. Admin or trainer role required.' });
-      }
-
+      const userId = req.user.claims.sub;
       const fileType = getFileType(req.file.mimetype);
-      const content = await extractTextContent(req.file.path, fileType);
-      const analysis = await analyzeDocument(content, req.file.originalname);
+      
+      // Process the uploaded file
+      const { content, analysis } = await processUploadedFile(
+        req.file.path,
+        req.file.originalname,
+        fileType
+      );
 
-      const documentData = {
-        fileName: nanoid(),
+      // Save document to database
+      const documentData = insertDocumentSchema.parse({
+        fileName: req.file.filename,
         originalName: req.file.originalname,
         fileType,
         filePath: req.file.path,
         fileSize: req.file.size,
-        uploadedBy: req.user.claims.sub,
+        uploadedBy: userId,
         aiSummary: analysis.summary,
         keyTopics: analysis.keyTopics,
-      };
+      });
 
       const document = await storage.createDocument(documentData);
 
       res.json({
         document,
         analysis,
-        content: content.substring(0, 1000) + (content.length > 1000 ? "..." : ""),
+        content: content.substring(0, 1000) + (content.length > 1000 ? "..." : ""), // Truncate for response
       });
     } catch (error) {
       console.error("Error processing file upload:", error);
@@ -93,22 +83,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Training modules
-  app.get('/api/modules', isAuthenticated, async (req: any, res) => {
+  app.get('/api/modules', isAuthenticated, async (req, res) => {
     try {
-      const user = await storage.getUser(req.user.claims.sub);
-      let modules;
-      
-      if (user?.role === 'admin' || user?.role === 'trainer') {
-        // Admin and trainers see all modules
-        modules = await storage.getTrainingModules();
-      } else {
-        // Employees only see published modules assigned to them
-        const assignments = await storage.getUserAssignments(req.user.claims.sub);
-        const assignedModuleIds = assignments.map(a => a.moduleId);
-        modules = await storage.getTrainingModules();
-        modules = modules.filter(m => m.status === 'published' && assignedModuleIds.includes(m.id));
-      }
-      
+      const modules = await storage.getTrainingModules();
       res.json(modules);
     } catch (error) {
       console.error("Error fetching modules:", error);
@@ -118,12 +95,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/modules', isAuthenticated, async (req: any, res) => {
     try {
-      // Check if user has admin or trainer role
-      const user = await storage.getUser(req.user.claims.sub);
-      if (!user || (user.role !== 'admin' && user.role !== 'trainer')) {
-        return res.status(403).json({ message: 'Access denied. Admin or trainer role required.' });
-      }
-
       const userId = req.user.claims.sub;
       const moduleData = insertTrainingModuleSchema.parse({
         ...req.body,

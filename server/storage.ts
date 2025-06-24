@@ -90,25 +90,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async upsertUser(userData: UpsertUser): Promise<User> {
-    // Assign roles based on email domain
-    let role: "admin" | "trainer" | "employee" = "employee";
-    if (userData.email === "parth.b@amazech.com") {
-      role = "admin";
-    } else if (userData.email?.endsWith("@amazech.com")) {
-      role = "trainer";
-    }
-
     const [user] = await db
       .insert(users)
-      .values({
-        ...userData,
-        role
-      })
+      .values(userData)
       .onConflictDoUpdate({
         target: users.id,
         set: {
           ...userData,
-          role,
           updatedAt: new Date(),
         },
       })
