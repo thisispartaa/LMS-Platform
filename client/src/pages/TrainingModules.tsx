@@ -409,6 +409,19 @@ export default function TrainingModules() {
                     </FormItem>
                   )}
                 />
+
+                {selectedModule?.document?.keyTopics && (
+                  <div>
+                    <label className="text-sm font-medium text-neutral-dark">Key Topics</label>
+                    <div className="flex flex-wrap gap-2 mt-2">
+                      {selectedModule.document.keyTopics.map((topic, index) => (
+                        <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {topic}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 
                 <div className="flex justify-end space-x-2">
                   <Button 
@@ -462,6 +475,21 @@ export default function TrainingModules() {
                   <p className="text-neutral-medium">
                     {selectedModule.description || "No description available"}
                   </p>
+                </div>
+
+                <div>
+                  <h4 className="font-medium text-neutral-dark mb-2">Key Topics</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedModule.document?.keyTopics && selectedModule.document.keyTopics.length > 0 ? (
+                      selectedModule.document.keyTopics.map((topic, index) => (
+                        <Badge key={index} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                          {topic}
+                        </Badge>
+                      ))
+                    ) : (
+                      <span className="text-neutral-medium text-sm">No key topics available</span>
+                    )}
+                  </div>
                 </div>
                 
                 <div className="grid grid-cols-2 gap-4 text-sm">
@@ -608,25 +636,7 @@ export default function TrainingModules() {
                 </div>
               </div>
 
-              <div className="flex space-x-2">
-                <Button 
-                  className="flex-1 bg-primary hover:bg-primary-dark text-white" 
-                  size="sm"
-                  onClick={() => handleEditModule(module)}
-                >
-                  <Edit className="h-4 w-4 mr-1" />
-                  Edit
-                </Button>
-                <Button 
-                  variant="outline" 
-                  className="flex-1" 
-                  size="sm"
-                  onClick={() => handleViewModule(module)}
-                >
-                  <Eye className="h-4 w-4 mr-1" />
-                  View
-                </Button>
-              </div>
+
             </CardContent>
           </Card>
         ))}

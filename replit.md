@@ -142,6 +142,9 @@ This is a comprehensive employee training platform built with a modern full-stac
   - Added edit, view, and delete capabilities for training modules
   - Fixed foreign key constraint issues for module deletion
   - Created comprehensive module management interface
+  - Removed redundant Edit/View buttons from module cards
+  - Added Key Topics display in module view and edit dialogs
+  - Implemented quiz questions display in Quiz Management tab
 
 ## Changelog
 
