@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus, Search, Eye, Edit, MoreVertical } from "lucide-react";
+import { Plus, Search, Eye, Edit, MoreVertical, Trash2, BookOpen } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -31,6 +31,9 @@ export default function TrainingModules() {
   const [stageFilter, setStageFilter] = useState("all");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<TrainingModule | null>(null);
   const [location, navigate] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -74,6 +77,76 @@ export default function TrainingModules() {
 
   const handleCreateModule = (data: CreateModuleForm) => {
     createModuleMutation.mutate(data);
+  };
+
+  const updateModuleMutation = useMutation({
+    mutationFn: async (data: CreateModuleForm) => {
+      if (!selectedModule) throw new Error("No module selected");
+      const response = await apiRequest("PUT", `/api/training-modules/${selectedModule.id}`, data);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training-modules"] });
+      setIsEditDialogOpen(false);
+      setSelectedModule(null);
+      form.reset();
+      toast({
+        title: "Module updated successfully",
+        description: "Your training module has been updated.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to update module",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteModuleMutation = useMutation({
+    mutationFn: async (moduleId: number) => {
+      const response = await apiRequest("DELETE", `/api/training-modules/${moduleId}`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/training-modules"] });
+      toast({
+        title: "Module deleted successfully",
+        description: "The training module has been removed.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Failed to delete module",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditModule = (module: TrainingModule) => {
+    setSelectedModule(module);
+    form.setValue("title", module.title);
+    form.setValue("description", module.description || "");
+    form.setValue("learningStage", module.learningStage);
+    form.setValue("status", module.status as "draft" | "published");
+    setIsEditDialogOpen(true);
+  };
+
+  const handleViewModule = (module: TrainingModule) => {
+    setSelectedModule(module);
+    setIsViewDialogOpen(true);
+  };
+
+  const handleDeleteModule = (module: TrainingModule) => {
+    if (confirm(`Are you sure you want to delete "${module.title}"? This action cannot be undone.`)) {
+      deleteModuleMutation.mutate(module.id);
+    }
+  };
+
+  const handleUpdateModule = (data: CreateModuleForm) => {
+    updateModuleMutation.mutate(data);
   };
 
   const filteredModules = modules?.filter((module) => {
@@ -249,6 +322,184 @@ export default function TrainingModules() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Edit Module Dialog */}
+        <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+          <DialogContent className="sm:max-w-[525px]">
+            <DialogHeader>
+              <DialogTitle>Edit Training Module</DialogTitle>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleUpdateModule)} className="space-y-6">
+                <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Module Title</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter module title" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Describe what this module covers..."
+                          className="resize-none"
+                          rows={4}
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="learningStage"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Learning Stage</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select learning stage" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="onboarding">Onboarding - New employee orientation</SelectItem>
+                          <SelectItem value="foundational">Foundational - Basic skills and knowledge</SelectItem>
+                          <SelectItem value="intermediate">Intermediate - Building on fundamentals</SelectItem>
+                          <SelectItem value="advanced">Advanced - Expert-level content</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft - Work in progress</SelectItem>
+                          <SelectItem value="published">Published - Ready for learners</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsEditDialogOpen(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    type="submit" 
+                    className="bg-primary hover:bg-primary-dark"
+                    disabled={updateModuleMutation.isPending}
+                  >
+                    {updateModuleMutation.isPending ? "Updating..." : "Update Module"}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
+
+        {/* View Module Dialog */}
+        <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+          <DialogContent className="sm:max-w-[725px]">
+            <DialogHeader>
+              <DialogTitle className="flex items-center space-x-2">
+                <BookOpen className="h-5 w-5" />
+                <span>{selectedModule?.title}</span>
+              </DialogTitle>
+            </DialogHeader>
+            {selectedModule && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <h4 className="font-medium text-neutral-dark mb-2">Learning Stage</h4>
+                    <Badge className={getStageColor(selectedModule.learningStage)}>
+                      {selectedModule.learningStage}
+                    </Badge>
+                  </div>
+                  <div>
+                    <h4 className="font-medium text-neutral-dark mb-2">Status</h4>
+                    <Badge className={getStatusColor(selectedModule.status)}>
+                      {selectedModule.status}
+                    </Badge>
+                  </div>
+                </div>
+                
+                <div>
+                  <h4 className="font-medium text-neutral-dark mb-2">Description</h4>
+                  <p className="text-neutral-medium">
+                    {selectedModule.description || "No description available"}
+                  </p>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <span className="text-neutral-medium">Created:</span>
+                    <span className="ml-2 font-medium">
+                      {new Date(selectedModule.createdAt!).toLocaleDateString()}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-neutral-medium">AI Generated:</span>
+                    <span className="ml-2 font-medium">
+                      {selectedModule.aiGenerated ? "Yes" : "No"}
+                    </span>
+                  </div>
+                </div>
+                
+                <div className="flex justify-end space-x-2">
+                  <Button 
+                    variant="outline"
+                    onClick={() => {
+                      setIsViewDialogOpen(false);
+                      handleEditModule(selectedModule);
+                    }}
+                  >
+                    <Edit className="h-4 w-4 mr-2" />
+                    Edit Module
+                  </Button>
+                  <Button 
+                    onClick={() => setIsViewDialogOpen(false)}
+                  >
+                    Close
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Filters */}
@@ -314,9 +565,32 @@ export default function TrainingModules() {
                     {module.description || "No description available"}
                   </p>
                 </div>
-                <Button variant="ghost" size="sm">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
+                <div className="flex space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleViewModule(module)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Eye className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleEditModule(module)}
+                    className="h-8 w-8 p-0"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm"
+                    onClick={() => handleDeleteModule(module)}
+                    className="h-8 w-8 p-0 text-red-600 hover:text-red-700"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
               
               <div className="space-y-3 mb-4">
@@ -335,11 +609,20 @@ export default function TrainingModules() {
               </div>
 
               <div className="flex space-x-2">
-                <Button className="flex-1 bg-primary hover:bg-primary-dark text-white" size="sm">
+                <Button 
+                  className="flex-1 bg-primary hover:bg-primary-dark text-white" 
+                  size="sm"
+                  onClick={() => handleEditModule(module)}
+                >
                   <Edit className="h-4 w-4 mr-1" />
                   Edit
                 </Button>
-                <Button variant="outline" className="flex-1" size="sm">
+                <Button 
+                  variant="outline" 
+                  className="flex-1" 
+                  size="sm"
+                  onClick={() => handleViewModule(module)}
+                >
                   <Eye className="h-4 w-4 mr-1" />
                   View
                 </Button>

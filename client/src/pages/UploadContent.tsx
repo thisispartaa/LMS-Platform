@@ -19,23 +19,34 @@ import {
   Plus,
   Wand2
 } from "lucide-react";
-import type { UploadResponse } from "@/types";
-
 interface ProcessingFile {
   name: string;
   progress: number;
   status: "uploading" | "processing" | "completed" | "error";
 }
 
+interface UploadAnalysisResult {
+  analysis: {
+    summary: string;
+    keyTopics: string[];
+    learningStage: "onboarding" | "foundational" | "intermediate" | "advanced";
+    suggestedTitle: string;
+  };
+  quizQuestions: any[];
+  content: string;
+  fileInfo: any;
+}
+
 export default function UploadContent() {
   const [dragActive, setDragActive] = useState(false);
   const [processingFiles, setProcessingFiles] = useState<ProcessingFile[]>([]);
-  const [uploadResult, setUploadResult] = useState<UploadResponse | null>(null);
+  const [uploadResult, setUploadResult] = useState<UploadAnalysisResult | null>(null);
   const [moduleTitle, setModuleTitle] = useState("");
   const [learningStage, setLearningStage] = useState("");
   const [aiSummary, setAiSummary] = useState("");
   const [keyTopics, setKeyTopics] = useState<string[]>([]);
   const [newTopic, setNewTopic] = useState("");
+  const [isCreatingModule, setIsCreatingModule] = useState(false);
   const { toast } = useToast();
 
   const uploadMutation = useMutation({
@@ -53,7 +64,7 @@ export default function UploadContent() {
         throw new Error(errorData.message || "Upload failed");
       }
       
-      return response.json() as Promise<UploadResponse>;
+      return response.json() as Promise<UploadAnalysisResult>;
     },
     onSuccess: (data) => {
       setUploadResult(data);
@@ -68,8 +79,8 @@ export default function UploadContent() {
       );
       
       toast({
-        title: "File processed successfully",
-        description: `AI analysis completed. Training module created with ${data.quizQuestions} quiz questions.`,
+        title: "File analyzed successfully",
+        description: `AI analysis completed. ${data.quizQuestions.length} quiz questions generated. Review and save as draft.`,
       });
     },
     onError: (error) => {
@@ -165,25 +176,7 @@ export default function UploadContent() {
     }
   };
 
-  const generateQuizMutation = useMutation({
-    mutationFn: async (moduleId: number) => {
-      const response = await apiRequest("POST", `/api/modules/${moduleId}/generate-quiz`);
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Quiz generated successfully",
-        description: "AI has created quiz questions for this module.",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Quiz generation failed",
-        description: "There was an error generating quiz questions.",
-        variant: "destructive",
-      });
-    },
-  });
+  // Removed redundant quiz generation mutation
 
   return (
     <div className="max-w-4xl space-y-6">
@@ -354,37 +347,42 @@ export default function UploadContent() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-neutral-dark mb-2">Generate Quiz Questions</label>
-                  <div className="flex items-center space-x-4 p-4 bg-blue-50 rounded-lg">
-                    <Wand2 className="h-5 w-5 text-primary" />
+                  <label className="block text-sm font-medium text-neutral-dark mb-2">Generated Quiz Questions</label>
+                  <div className="flex items-center space-x-4 p-4 bg-green-50 rounded-lg">
+                    <Wand2 className="h-5 w-5 text-green-600" />
                     <div className="flex-1">
-                      <p className="text-sm font-medium text-neutral-dark">Auto-generate quiz questions</p>
-                      <p className="text-xs text-neutral-medium">AI will create 10-15 questions based on the content</p>
+                      <p className="text-sm font-medium text-neutral-dark">
+                        {uploadResult?.quizQuestions?.length || 0} quiz questions generated
+                      </p>
+                      <p className="text-xs text-neutral-medium">
+                        Questions will be included when you save the module
+                      </p>
                     </div>
-                    <Button
-                      onClick={() => {
-                        // This would be called after module creation
-                        toast({
-                          title: "Quiz generation scheduled",
-                          description: "Quiz questions will be generated after module creation.",
-                        });
-                      }}
-                      className="bg-primary hover:bg-primary-dark"
-                      size="sm"
-                    >
-                      Generate
-                    </Button>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="flex justify-end space-x-4 mt-6">
-              <Button variant="outline">
-                Save as Draft
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  setIsCreatingModule(true);
+                  createModuleMutation.mutate();
+                }}
+                disabled={createModuleMutation.isPending || !moduleTitle || !aiSummary}
+              >
+                {createModuleMutation.isPending ? "Saving..." : "Save as Draft"}
               </Button>
-              <Button className="bg-primary hover:bg-primary-dark">
-                Create Module
+              <Button 
+                className="bg-primary hover:bg-primary-dark"
+                onClick={() => {
+                  setIsCreatingModule(true);
+                  createModuleMutation.mutate();
+                }}
+                disabled={createModuleMutation.isPending || !moduleTitle || !aiSummary}
+              >
+                {createModuleMutation.isPending ? "Creating..." : "Create Module"}
               </Button>
             </div>
           </CardContent>

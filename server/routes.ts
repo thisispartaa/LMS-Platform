@@ -40,7 +40,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // File upload and processing
+  // File upload and processing (only analyzes, doesn't save to database)
   app.post('/api/upload', isAuthenticated, upload.single('file'), async (req: any, res) => {
     try {
       if (!req.file) {
@@ -57,36 +57,56 @@ export async function registerRoutes(app: Express): Promise<Server> {
         fileType
       );
 
+      // Generate quiz questions for preview
+      const quizQuestions = await generateQuizQuestions(content, analysis.keyTopics);
+
+      res.json({
+        analysis,
+        quizQuestions,
+        content: content.substring(0, 1000) + (content.length > 1000 ? "..." : ""),
+        fileInfo: {
+          fileName: req.file.filename,
+          originalName: req.file.originalname,
+          fileType,
+          filePath: req.file.path,
+          fileSize: req.file.size,
+          uploadedBy: userId,
+        }
+      });
+    } catch (error) {
+      console.error("Error processing file upload:", error);
+      res.status(500).json({ message: "Failed to process uploaded file" });
+    }
+  });
+
+  // Create training module from uploaded content
+  app.post('/api/create-training-module', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const { moduleData, fileInfo, quizQuestions } = req.body;
+
       // Save document to database
       const documentData = insertDocumentSchema.parse({
-        fileName: req.file.filename,
-        originalName: req.file.originalname,
-        fileType,
-        filePath: req.file.path,
-        fileSize: req.file.size,
-        uploadedBy: userId,
-        aiSummary: analysis.summary,
-        keyTopics: analysis.keyTopics,
+        ...fileInfo,
+        aiSummary: moduleData.description,
+        keyTopics: moduleData.keyTopics,
       });
 
       const document = await storage.createDocument(documentData);
 
-      // Create training module based on the analysis
-      const moduleData = insertTrainingModuleSchema.parse({
-        title: analysis.suggestedTitle,
-        description: analysis.summary,
-        learningStage: analysis.learningStage,
+      // Create training module
+      const trainingModuleData = insertTrainingModuleSchema.parse({
+        title: moduleData.title,
+        description: moduleData.description,
+        learningStage: moduleData.learningStage,
         status: "draft",
         documentId: document.id,
         createdBy: userId,
         aiGenerated: true,
       });
 
-      const trainingModule = await storage.createTrainingModule(moduleData);
+      const trainingModule = await storage.createTrainingModule(trainingModuleData);
 
-      // Generate quiz questions for the module
-      const quizQuestions = await generateQuizQuestions(content, analysis.keyTopics);
-      
       // Save quiz questions to database
       for (let i = 0; i < quizQuestions.length; i++) {
         const questionData = insertQuizQuestionSchema.parse({
@@ -104,14 +124,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       res.json({
         document,
-        analysis,
         trainingModule,
         quizQuestions: quizQuestions.length,
-        content: content.substring(0, 1000) + (content.length > 1000 ? "..." : ""), // Truncate for response
       });
     } catch (error) {
-      console.error("Error processing file upload:", error);
-      res.status(500).json({ message: "Failed to process uploaded file" });
+      console.error("Error creating training module:", error);
+      res.status(500).json({ message: "Failed to create training module" });
     }
   });
 
