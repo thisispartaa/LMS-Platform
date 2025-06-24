@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Upload, 
   FileText, 
@@ -176,7 +176,53 @@ export default function UploadContent() {
     }
   };
 
-  // Removed redundant quiz generation mutation
+  const createModuleMutation = useMutation({
+    mutationFn: async () => {
+      if (!uploadResult) throw new Error("No upload result available");
+      
+      const moduleData = {
+        title: moduleTitle,
+        description: aiSummary,
+        learningStage,
+        keyTopics,
+      };
+      
+      const response = await apiRequest("POST", "/api/create-training-module", {
+        moduleData,
+        fileInfo: uploadResult.fileInfo,
+        quizQuestions: uploadResult.quizQuestions,
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setIsCreatingModule(false);
+      
+      // Invalidate training modules cache to refresh the list
+      queryClient.invalidateQueries({ queryKey: ["/api/training-modules"] });
+      
+      toast({
+        title: "Training module created successfully",
+        description: `Module "${moduleTitle}" saved as draft with ${data.quizQuestions} quiz questions.`,
+      });
+      
+      // Reset form
+      setUploadResult(null);
+      setModuleTitle("");
+      setLearningStage("");
+      setAiSummary("");
+      setKeyTopics([]);
+      setProcessingFiles([]);
+    },
+    onError: (error) => {
+      setIsCreatingModule(false);
+      console.error("Module creation error:", error);
+      toast({
+        title: "Module creation failed",
+        description: "There was an error creating the training module.",
+        variant: "destructive",
+      });
+    },
+  });
 
   return (
     <div className="max-w-4xl space-y-6">

@@ -133,10 +133,20 @@ This is a comprehensive employee training platform built with a modern full-stac
 - **Session Persistence**: Database-backed sessions for horizontal scaling
 - **File Storage**: Local filesystem (can be extended to cloud storage)
 
+## Recent Changes
+
+- June 24, 2025: Enhanced training module creation workflow
+  - Modified upload flow to analyze content without auto-saving
+  - Added "Save as Draft" functionality for manual module creation
+  - Implemented 4-step module creation process with AI analysis
+  - Added edit, view, and delete capabilities for training modules
+  - Fixed foreign key constraint issues for module deletion
+  - Created comprehensive module management interface
+
 ## Changelog
 
-Changelog:
-- June 24, 2025. Initial setup
+- June 24, 2025: Initial setup
+- June 24, 2025: Enhanced module creation and management features
 
 ## User Preferences
 

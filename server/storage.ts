@@ -166,6 +166,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteTrainingModule(id: number): Promise<void> {
+    // First delete all quiz questions associated with this module
+    await db.delete(quizQuestions).where(eq(quizQuestions.moduleId, id));
+    
+    // Then delete the training module
     await db.delete(trainingModules).where(eq(trainingModules.id, id));
   }
 
