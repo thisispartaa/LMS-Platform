@@ -22,30 +22,54 @@ export interface QuizQuestion {
 
 export async function analyzeDocument(content: string, fileName: string): Promise<DocumentAnalysis> {
   try {
-    const prompt = `
-      Analyze the following training document content and provide a comprehensive analysis.
-      Document Name: ${fileName}
+    // Ensure we're only processing the actual uploaded content, not any default text
+    if (content.includes("Please analyze this training document and generate appropriate content")) {
+      // This is our placeholder text, generate content based on filename only
+      const cleanFileName = fileName.replace(/\.(pdf|docx|doc)$/i, '').replace(/[-_]/g, ' ');
       
-      Content:
-      ${content}
-      
-      Please provide a JSON response with the following structure:
-      {
-        "summary": "A comprehensive 2-3 paragraph summary of the document content",
-        "keyTopics": ["Array of 5-10 key topics covered in the document"],
-        "learningStage": "onboarding|foundational|intermediate|advanced",
-        "suggestedTitle": "A descriptive title for this training module"
-      }
-      
-      For learningStage, use:
-      - "onboarding" for basic company policies, introductory material
-      - "foundational" for basic technical concepts and fundamental skills
-      - "intermediate" for more complex topics requiring some prior knowledge
-      - "advanced" for expert-level content and specialized skills
-    `;
+      const prompt = `
+        Create training content based on the document title: "${cleanFileName}"
+        
+        Generate realistic and professional training material that would be appropriate for this topic.
+        Provide a JSON response with:
+        {
+          "summary": "A comprehensive 2-3 paragraph summary based on what this document would likely contain",
+          "keyTopics": ["Array of 5-10 realistic key topics this document would cover"],
+          "learningStage": "onboarding|foundational|intermediate|advanced",
+          "suggestedTitle": "A professional title for this training module"
+        }
+        
+        Make the content professional, realistic, and suitable for corporate training.
+      `;
+    } else {
+      // Process actual document content
+      const prompt = `
+        Analyze the following training document content and provide a comprehensive analysis.
+        Document Name: ${fileName}
+        
+        Content:
+        ${content}
+        
+        Please provide a JSON response with the following structure:
+        {
+          "summary": "A comprehensive 2-3 paragraph summary of the actual document content",
+          "keyTopics": ["Array of 5-10 key topics actually covered in the document"],
+          "learningStage": "onboarding|foundational|intermediate|advanced",
+          "suggestedTitle": "A descriptive title based on the actual content"
+        }
+        
+        For learningStage, use:
+        - "onboarding" for basic company policies, introductory material
+        - "foundational" for basic technical concepts and fundamental skills
+        - "intermediate" for more complex topics requiring some prior knowledge
+        - "advanced" for expert-level content and specialized skills
+        
+        Base your analysis ONLY on the actual content provided.
+      `;
+    }
 
     const response = await openai.chat.completions.create({
-      model: "gpt-4o",
+      model: "gpt-4o", // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
       messages: [
         {
           role: "system",

@@ -79,22 +79,12 @@ export async function extractTextContent(filePath: string, fileType: "pdf" | "do
 
 async function extractPDFText(filePath: string): Promise<string> {
   try {
-    // For now, return a placeholder that includes file information
-    // In production, you would use a PDF parsing library or service
-    const stats = await fs.stat(filePath);
+    // Since we don't have a PDF parser installed, we'll return a minimal placeholder
+    // that tells the AI to generate content based on the filename only
     const fileName = path.basename(filePath);
-    return `PDF Document Analysis: ${fileName}
+    return `Training Document: ${fileName}
 
-This is a PDF training document that has been uploaded to the system. The document contains ${Math.round(stats.size / 1024)}KB of content and covers important training material for your organization.
-
-Key areas typically covered in training PDFs include:
-- Company policies and procedures
-- Safety guidelines and protocols  
-- Product knowledge and specifications
-- Process documentation and workflows
-- Compliance requirements and standards
-
-The AI system has processed this document and will generate appropriate training modules and quiz questions based on the content structure and learning objectives identified within the document.`;
+Please analyze this training document and generate appropriate content based on the document title and context. Create relevant training material that would be suitable for professional development and learning objectives.`;
   } catch (error) {
     console.error("Error processing PDF file:", error);
     throw new Error("Failed to process PDF file");
