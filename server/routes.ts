@@ -13,7 +13,9 @@ import {
   insertUserModuleAssignmentSchema,
   insertQuizResultSchema,
   insertChatMessageSchema,
+  userModuleAssignments
 } from "@shared/schema";
+import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth middleware
@@ -423,6 +425,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user progress:", error);
       res.status(500).json({ message: "Failed to fetch user progress" });
+    }
+  });
+
+  // Remove module assignment
+  app.delete('/api/users/:userId/remove-module/:moduleId', isAuthenticated, async (req, res) => {
+    try {
+      const { userId, moduleId } = req.params;
+      
+      // Delete the assignment
+      await storage.db.delete(userModuleAssignments)
+        .where(
+          and(
+            eq(userModuleAssignments.userId, userId),
+            eq(userModuleAssignments.moduleId, parseInt(moduleId))
+          )
+        );
+
+      res.json({ message: 'Assignment removed successfully' });
+    } catch (error) {
+      console.error('Error removing assignment:', error);
+      res.status(500).json({ message: 'Failed to remove assignment' });
     }
   });
 
