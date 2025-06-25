@@ -1,4 +1,4 @@
-# AmazechUniversity
+# Amazech Training Platform
 
 ## Overview
 
@@ -149,15 +149,6 @@ This is a comprehensive employee training platform built with a modern full-stac
   - Updated user role to admin for parth.b@amazech.com
   - Fixed Settings tab by commenting out Email Templates section
   - Enhanced AmazeBot with document-aware responses and training context
-
-- June 25, 2025: Implemented role-based access control and rebranding
-  - Created separate admin and employee interfaces with distinct navigation
-  - Admin view: Full platform management (Upload Content above Training Modules)
-  - Employee view: Personal learning dashboard, assigned training, progress tracking
-  - Renamed platform to "AmazechUniversity" with integrated Amazech logo
-  - Added employee-specific API endpoints for assignments and progress
-  - Both user types retain access to enhanced AmazeBot functionality
-  - Maintained parth.b@amazech.com as admin, parth@catenate.io as employee for testing
 
 ## Changelog
 
