@@ -68,10 +68,18 @@ export default function TopBar() {
               <DropdownMenuItem 
                 onClick={async () => {
                   try {
-                    await fetch('/api/auth/logout', { method: 'POST' });
-                    window.location.href = '/';
+                    await fetch('/api/auth/logout', { 
+                      method: 'POST',
+                      credentials: 'include'
+                    });
+                    // Clear any cached user data
+                    queryClient.clear();
+                    // Force page reload to clear all state
+                    window.location.reload();
                   } catch (error) {
                     console.error('Sign out error:', error);
+                    // Force reload even if logout fails
+                    window.location.reload();
                   }
                 }} 
                 className="text-red-600"

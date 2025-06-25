@@ -12,6 +12,7 @@ import UploadContent from "@/pages/UploadContent";
 import QuizManagement from "@/pages/QuizManagement";
 import UserManagement from "@/pages/UserManagement";
 import Settings from "@/pages/Settings";
+import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import NotFound from "@/pages/not-found";
 import Sidebar from "@/components/layout/Sidebar";
 import TopBar from "@/components/layout/TopBar";
@@ -41,6 +42,22 @@ function Router() {
     );
   }
 
+  // Employee dashboard for non-admin users
+  if ((user as any).role === 'employee') {
+    return (
+      <div className="flex h-screen bg-gray-50">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <TopBar />
+          <main className="flex-1 overflow-x-hidden overflow-y-auto bg-gray-50 p-6">
+            <EmployeeDashboard />
+          </main>
+        </div>
+        <ChatbotWidget />
+      </div>
+    );
+  }
+
+  // Admin dashboard for admin/trainer users
   return (
     <div className="flex h-screen bg-neutral-light">
       <Sidebar />
