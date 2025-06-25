@@ -25,6 +25,13 @@ export default function ChatbotWidget() {
     onSuccess: () => {
       setMessage("");
       refetch();
+      // Auto-scroll to bottom after new message
+      setTimeout(() => {
+        const scrollArea = document.querySelector('[data-radix-scroll-area-viewport]');
+        if (scrollArea) {
+          scrollArea.scrollTop = scrollArea.scrollHeight;
+        }
+      }, 100);
     },
   });
 
@@ -146,22 +153,22 @@ export default function ChatbotWidget() {
               </div>
             </ScrollArea>
             
-            <div className="p-4 border-t border-gray-200">
-              <div className="flex items-center space-x-2">
+            <div className="p-4 border-t border-gray-200 flex-shrink-0">
+              <div className="flex items-end space-x-2">
                 <Input
                   type="text"
                   placeholder="Ask AmazeBot a question..."
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  className="flex-1 text-sm"
+                  className="flex-1 text-sm resize-none"
                   disabled={sendMessageMutation.isPending}
                 />
                 <Button
                   onClick={handleSendMessage}
                   disabled={!message.trim() || sendMessageMutation.isPending}
                   size="sm"
-                  className="bg-primary hover:bg-primary-dark"
+                  className="bg-primary hover:bg-primary-dark flex-shrink-0"
                 >
                   <Send className="h-4 w-4" />
                 </Button>
