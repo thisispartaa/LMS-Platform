@@ -135,7 +135,19 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 ## Recent Changes
 
-- June 25, 2025: Major feature enhancements across platform
+- June 25, 2025: Employee Dashboard Implementation
+  - Created comprehensive employee dashboard for training management
+  - Added role-based interface switching (admin vs employee views)
+  - Implemented assigned module viewing with progress tracking
+  - Added interactive quiz taking with real-time explanations
+  - Built document download functionality for training materials
+  - Created module completion tracking and statistics
+  - Enhanced AmazeBot integration for employee training support
+  - Added dynamic answer explanations during quiz taking
+  - Implemented progress visualization with completion percentages
+  - Built comprehensive training progress analytics for employees
+
+- June 25, 2025: Previous Major Enhancements
   - Enhanced AmazeBot with database access and improved chat interface
   - Added chat history clearing on page refresh/logout
   - Implemented quiz question creation and deletion functionality
