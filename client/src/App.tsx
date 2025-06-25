@@ -40,8 +40,8 @@ function Router() {
             <Route path="/modules" component={TrainingModules} />
             <Route path="/upload" component={UploadContent} />
             <Route path="/quizzes" component={QuizManagement} />
-            <Route path="/users" component={UserManagement} />
-            <Route path="/analytics" component={Analytics} />
+            <Route path="/users" component={lazy(() => import("./pages/UserManagement2"))} />
+            <Route path="/analytics" component={lazy(() => import("./pages/Analytics2"))} />
             <Route path="/settings" component={Settings} />
             <Route component={NotFound} />
           </Switch>

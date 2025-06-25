@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
 import { getQueryFn, apiRequest, queryClient } from "@/lib/queryClient";
-import { HelpCircle, Edit, Save, X } from "lucide-react";
+import { HelpCircle, Edit, Save, X, Plus, Trash2 } from "lucide-react";
 
 const editQuestionSchema = z.object({
   questionText: z.string().min(10, "Question must be at least 10 characters"),
@@ -51,6 +51,36 @@ export default function QuizManagement() {
 
   const form = useForm<EditQuestionForm>({
     resolver: zodResolver(editQuestionSchema),
+  });
+
+  const createQuestionMutation = useMutation({
+    mutationFn: async (data: any) => {
+      await apiRequest("POST", "/api/quiz-questions", data);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Question created",
+        description: "The quiz question has been created successfully.",
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/quiz-questions", selectedModuleId] 
+      });
+    },
+  });
+
+  const deleteQuestionMutation = useMutation({
+    mutationFn: async (id: number) => {
+      await apiRequest("DELETE", `/api/quiz-questions/${id}`);
+    },
+    onSuccess: () => {
+      toast({
+        title: "Question deleted",
+        description: "The quiz question has been deleted successfully.",
+      });
+      queryClient.invalidateQueries({ 
+        queryKey: ["/api/quiz-questions", selectedModuleId] 
+      });
+    },
   });
 
   const updateQuestionMutation = useMutation({
@@ -104,6 +134,27 @@ export default function QuizManagement() {
     updateQuestionMutation.mutate({ ...data, id: editingQuestion.id });
   };
 
+  const handleDeleteQuestion = (question: any) => {
+    if (confirm("Are you sure you want to delete this question?")) {
+      deleteQuestionMutation.mutate(question.id);
+    }
+  };
+
+  const handleCreateQuestion = () => {
+    if (!selectedModuleId) return;
+    
+    const newQuestion = {
+      moduleId: selectedModuleId,
+      questionText: "New question text",
+      questionType: "multiple_choice",
+      options: ["Option 1", "Option 2", "Option 3", "Option 4"],
+      correctAnswer: "Option 1",
+      explanation: "Explanation for the correct answer"
+    };
+    
+    createQuestionMutation.mutate(newQuestion);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -124,7 +175,7 @@ export default function QuizManagement() {
                   <SelectValue placeholder="Choose a module to view its quizzes" />
                 </SelectTrigger>
                 <SelectContent>
-                  {modules.map((module: any) => (
+                  {modules?.map((module: any) => (
                     <SelectItem key={module.id} value={module.id.toString()}>
                       {module.title}
                     </SelectItem>
@@ -140,9 +191,19 @@ export default function QuizManagement() {
       {selectedModuleId && (
         <Card>
           <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <HelpCircle className="h-5 w-5" />
-              <span>Quiz Questions</span>
+            <CardTitle className="flex items-center justify-between">
+              <div className="flex items-center space-x-2">
+                <HelpCircle className="h-5 w-5" />
+                <span>Quiz Questions</span>
+              </div>
+              <Button
+                onClick={handleCreateQuestion}
+                className="bg-primary hover:bg-primary-dark"
+                disabled={createQuestionMutation.isPending}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Question
+              </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -178,14 +239,25 @@ export default function QuizManagement() {
                           {question.questionText}
                         </h4>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditQuestion(question)}
-                      >
-                        <Edit className="h-4 w-4 mr-1" />
-                        Edit
-                      </Button>
+                      <div className="flex items-center space-x-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditQuestion(question)}
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Edit
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteQuestion(question)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="h-4 w-4 mr-1" />
+                          Delete
+                        </Button>
+                      </div>
                     </div>
 
                     {/* Options for multiple choice */}

@@ -260,14 +260,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // User Management routes
   app.get('/api/users', isAuthenticated, async (req, res) => {
     try {
-      const { role } = req.query;
-      const users = role 
-        ? await storage.getUsersByRole(role as string)
-        : await storage.getUsersByRole("employee"); // Default to employees
+      const users = await storage.getAllUsers();
       res.json(users);
     } catch (error) {
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+
+  app.post('/api/users/invite', isAuthenticated, async (req, res) => {
+    try {
+      const { email, firstName, lastName, role } = req.body;
+      
+      const newUser = await storage.createUser({
+        email,
+        firstName,
+        lastName,
+        role,
+        password: 'TempPass123!'
+      });
+      
+      res.status(201).json(newUser);
+    } catch (error) {
+      console.error("Error creating user:", error);
+      res.status(500).json({ message: "Failed to create user" });
+    }
+  });
+
+  app.patch('/api/users/:id', isAuthenticated, async (req, res) => {
+    try {
+      const id = req.params.id;
+      const updates = req.body;
+      const updatedUser = await storage.updateUser(id, updates);
+      res.json(updatedUser);
+    } catch (error) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: "Failed to update user" });
+    }
+  });
+
+  app.post('/api/users/:userId/assign-module', isAuthenticated, async (req, res) => {
+    try {
+      const userId = req.params.userId;
+      const { moduleId } = req.body;
+      
+      const assignment = await storage.assignModuleToUser({
+        userId,
+        moduleId: parseInt(moduleId),
+        assignedAt: new Date()
+      });
+      
+      res.status(201).json(assignment);
+    } catch (error) {
+      console.error("Error assigning module:", error);
+      res.status(500).json({ message: "Failed to assign module" });
     }
   });
 
