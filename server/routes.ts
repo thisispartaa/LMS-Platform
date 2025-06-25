@@ -299,23 +299,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Chatbot route
-  app.post('/api/chatbot', isAuthenticated, async (req: any, res) => {
+  // Chatbot routes (supporting both /api/chat and /api/chatbot)
+  const handleChatRequest = async (req: any, res: any) => {
     try {
       const { message } = req.body;
       const userId = req.user.claims.sub;
       
+      if (!message || !message.trim()) {
+        return res.status(400).json({ message: "Message is required" });
+      }
+      
       // Get user's recent chat history for context
-      const chatHistory = await storage.getUserChatHistory(userId, 5);
+      const chatHistory = await storage.getUserChatHistory(userId, 10);
       
-      // Get chatbot response
-      const response = await getChatbotResponse(message, chatHistory);
+      // Get chatbot response with enhanced context
+      const response = await getChatbotResponse(message, chatHistory, userId);
       
-      // Save the conversation
+      // Save the conversation (user message and bot response together)
       const chatData = insertChatMessageSchema.parse({
         userId,
-        message,
+        message: message.trim(),
         response,
+        role: 'user'
       });
       
       await storage.createChatMessage(chatData);
@@ -323,7 +328,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ response });
     } catch (error) {
       console.error("Error processing chatbot request:", error);
-      res.status(500).json({ message: "Failed to process chatbot request" });
+      res.status(500).json({ message: "Failed to process chatbot request", error: error.message });
+    }
+  };
+
+  app.post('/api/chat', isAuthenticated, handleChatRequest);
+  app.post('/api/chatbot', isAuthenticated, handleChatRequest);
+
+  // Chat history route
+  app.get('/api/chat/history', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims.sub;
+      const history = await storage.getUserChatHistory(userId, 50);
+      res.json(history);
+    } catch (error) {
+      console.error("Error fetching chat history:", error);
+      res.status(500).json({ message: "Failed to fetch chat history" });
     }
   });
 

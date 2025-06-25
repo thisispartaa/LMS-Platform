@@ -157,60 +157,61 @@ export async function generateQuizQuestions(content: string, keyTopics: string[]
 
 export async function getChatbotResponse(
   userMessage: string,
-  chatHistory: Array<{ message: string; response: string }>,
-  availableModules: Array<{ title: string; description: string; learningStage: string }>
+  chatHistory: ChatMessage[],
+  userId: string
 ): Promise<string> {
   try {
-    const historyContext = chatHistory
-      .slice(-5) // Last 5 exchanges for context
-      .map(h => `Human: ${h.message}\nAssistant: ${h.response}`)
-      .join("\n\n");
+    // Get user's training documents and progress for context
+    const { storage } = await import("../storage");
+    const userDocuments = await storage.getDocumentsByUser(userId);
+    const userModules = await storage.getUserAssignments(userId);
+    
+    // Create context from uploaded documents
+    const documentContext = userDocuments.map(doc => 
+      `Document: ${doc.originalName}\nSummary: ${doc.aiSummary}\nKey Topics: ${doc.keyTopics?.join(", ") || "None"}`
+    ).join("\n\n");
 
-    const modulesContext = availableModules
-      .map(m => `- ${m.title} (${m.learningStage}): ${m.description}`)
-      .join("\n");
+    const systemPrompt = `You are AmazeBot, an AI training assistant for the Amazech Training Platform. 
+    You help employees with their training by:
+    1. Answering questions based on their uploaded training documents
+    2. Explaining quiz answers and concepts from their training materials
+    3. Providing feedback on training progress
+    4. Offering study guidance and learning tips
+    
+    AVAILABLE TRAINING CONTENT:
+    ${documentContext || "No training documents uploaded yet."}
+    
+    USER TRAINING STATUS:
+    - Has ${userModules.length} assigned training modules
+    - Has access to ${userDocuments.length} training documents
+    
+    Guidelines:
+    - Always refer to the specific training materials when answering questions
+    - If asked about topics not covered in their training materials, say so clearly
+    - Be encouraging and supportive about their learning progress
+    - Provide practical examples when explaining concepts
+    - Keep responses concise but informative`;
 
-    const prompt = `
-      You are AmazeBot, a helpful training assistant for the Amazech Training Platform. 
-      
-      Your role is to:
-      - Answer questions about training content and concepts
-      - Explain complex topics in simple terms
-      - Suggest relevant training modules based on user needs
-      - Provide guidance on learning paths and next steps
-      - Help users understand quiz results and feedback
-      
-      Available Training Modules:
-      ${modulesContext}
-      
-      Recent Chat History:
-      ${historyContext}
-      
-      Current User Message: ${userMessage}
-      
-      Please provide a helpful, conversational response. If the user asks about topics covered in the training modules, reference the relevant modules. Keep responses concise but informative.
-    `;
+    const messages = [
+      { role: "system", content: systemPrompt },
+      ...chatHistory.slice(-10).map(msg => ({
+        role: msg.role === 'user' ? 'user' : 'assistant',
+        content: msg.message
+      })),
+      { role: "user", content: userMessage }
+    ];
 
     const response = await openai.chat.completions.create({
       model: "gpt-4o",
-      messages: [
-        {
-          role: "system",
-          content: "You are AmazeBot, a friendly and knowledgeable training assistant. Always be helpful, encouraging, and provide actionable advice."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      max_tokens: 500,
+      messages: messages as any,
+      max_tokens: 800,
       temperature: 0.7,
     });
 
-    return response.choices[0].message.content || "I'm sorry, I couldn't generate a response right now. Please try again.";
+    return response.choices[0].message.content || "I'm sorry, I couldn't process your request. Please try asking about your training materials or quiz questions.";
   } catch (error) {
-    console.error("Error generating chatbot response:", error);
-    return "I'm experiencing some technical difficulties. Please try again in a moment.";
+    console.error("Error getting chatbot response:", error);
+    return "I'm having trouble accessing your training information right now. Please try again in a moment, or contact support if the issue persists.";
   }
 }
 
