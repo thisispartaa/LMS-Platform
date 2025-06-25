@@ -123,7 +123,33 @@ export default function UserManagement() {
       setSelectedUser(null);
       assignForm.reset();
       toast({ title: "Module assigned successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/user-progress"] });
     },
+  });
+
+  // Remove assignment mutation
+  const removeAssignmentMutation = useMutation({
+    mutationFn: async ({ userId, moduleId }: { userId: string; moduleId: number }) => {
+      const response = await fetch(`/api/users/${userId}/remove-module/${moduleId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to remove assignment');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/analytics/user-progress"] });
+      toast({
+        title: "Success",
+        description: "Module assignment removed successfully"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Error",
+        description: "Failed to remove assignment",
+        variant: "destructive"
+      });
+    }
   });
 
   const handleInviteUser = (data: InviteUserForm) => {
@@ -544,7 +570,7 @@ export default function UserManagement() {
                             disabled={removeAssignmentMutation.isPending}
                             className="text-red-600 hover:text-red-900 disabled:opacity-50"
                           >
-                            Remove
+                            {removeAssignmentMutation.isPending ? 'Removing...' : 'Remove'}
                           </button>
                         )}
                       </td>
