@@ -299,6 +299,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Assign modules to user
+  app.post('/api/assign-modules', isAuthenticated, async (req: any, res) => {
+    try {
+      const { userId, moduleIds } = req.body;
+      
+      // Create assignments for each module
+      for (const moduleId of moduleIds) {
+        await storage.assignModuleToUser({
+          userId,
+          moduleId,
+        });
+      }
+      
+      res.json({ message: "Modules assigned successfully" });
+    } catch (error) {
+      console.error("Error assigning modules:", error);
+      res.status(500).json({ message: "Failed to assign modules" });
+    }
+  });
+
   // Chatbot route
   app.post('/api/chatbot', isAuthenticated, async (req: any, res) => {
     try {
