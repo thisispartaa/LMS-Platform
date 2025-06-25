@@ -312,8 +312,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get user's recent chat history for context
       const chatHistory = await storage.getUserChatHistory(userId, 10);
       
-      // Get chatbot response with enhanced context
-      const response = await getChatbotResponse(message, chatHistory, userId);
+      // Get chatbot response with enhanced context and database access
+      const response = await getChatbotResponse(message, chatHistory, userId, storage);
       
       // Save the conversation (user message and bot response together)
       const chatData = insertChatMessageSchema.parse({

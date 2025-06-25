@@ -40,7 +40,7 @@ export default function ChatbotWidget() {
         if (scrollArea) {
           scrollArea.scrollTop = scrollArea.scrollHeight;
         }
-      }, 100);
+      }, 200);
     },
   });
 
