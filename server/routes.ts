@@ -2,8 +2,10 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
+import passport from "passport";
 import { storage } from "./storage";
 import { setupAuth, isAuthenticated } from "./replitAuth";
+import { setupLocalAuth } from "./auth";
 import { upload, getFileType, processUploadedFile } from "./services/fileProcessor";
 import { generateQuizQuestions, getChatbotResponse, suggestReviewModules } from "./services/openai";
 import { 
@@ -18,6 +20,8 @@ import {
 import { eq, and } from "drizzle-orm";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup local authentication
+  setupLocalAuth();
   // Auth middleware
   await setupAuth(app);
 
@@ -284,18 +288,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { email, firstName, lastName, role } = req.body;
       
+      // Generate unique ID and default password
+      const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      const defaultPassword = `temp${Math.random().toString(36).substring(7)}`;
+      
+      console.log('Creating user with unique ID:', uniqueId);
+      
       const newUser = await storage.createUser({
+        id: uniqueId,
         email,
         firstName,
         lastName,
         role,
-        password: 'TempPass123!'
+        password: defaultPassword
       });
-      
-      res.status(201).json(newUser);
+
+      res.status(201).json({ 
+        ...newUser, 
+        defaultPassword,
+        message: `User invited successfully. Default password: ${defaultPassword}`
+      });
     } catch (error) {
-      console.error("Error creating user:", error);
-      res.status(500).json({ message: "Failed to create user" });
+      console.error('Error inviting user:', error);
+      res.status(500).json({ message: 'Failed to invite user' });
     }
   });
 
@@ -441,6 +456,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error removing assignment:', error);
       res.status(500).json({ message: 'Failed to remove assignment' });
     }
+  });
+
+  // Local login route
+  app.post('/api/auth/local/login', passport.authenticate('local', { 
+    successRedirect: undefined,
+    failureRedirect: undefined 
+  }), (req, res) => {
+    res.json({ 
+      user: req.user,
+      message: 'Login successful' 
+    });
+  });
+
+  // Local logout route  
+  app.post('/api/auth/local/logout', (req, res) => {
+    req.logout((err) => {
+      if (err) {
+        return res.status(500).json({ message: 'Logout failed' });
+      }
+      res.json({ message: 'Logged out successfully' });
+    });
   });
 
   const httpServer = createServer(app);

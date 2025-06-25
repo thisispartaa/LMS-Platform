@@ -135,6 +135,18 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 ## Recent Changes
 
+- June 25, 2025: Authentication System Overhaul & Code Cleanup
+  - Implemented dual authentication system (Replit Auth + Local Auth for invited users)
+  - Fixed user ID generation to use proper unique identifiers instead of email addresses
+  - Added comprehensive debugging and logging for authentication issues
+  - Created dedicated local authentication strategy with passport-local
+  - Enhanced landing page with tabbed login interface (Replit Auth vs Employee Login)
+  - Cleaned up unused files (Analytics.tsx, UserManagement.tsx) and consolidated components
+  - Fixed logout functionality to handle both auth types with proper session clearing
+  - Updated database schema to include password field for local authentication
+  - Streamlined routing and removed duplicate component references
+  - Enhanced error handling and user feedback for login attempts
+
 - June 25, 2025: Employee Dashboard Implementation
   - Created comprehensive employee dashboard for training management
   - Added role-based interface switching (admin vs employee views)
@@ -146,17 +158,6 @@ This is a comprehensive employee training platform built with a modern full-stac
   - Added dynamic answer explanations during quiz taking
   - Implemented progress visualization with completion percentages
   - Built comprehensive training progress analytics for employees
-
-- June 25, 2025: Previous Major Enhancements
-  - Enhanced AmazeBot with database access and improved chat interface
-  - Added chat history clearing on page refresh/logout
-  - Implemented quiz question creation and deletion functionality
-  - Added user invitation system with default passwords
-  - Implemented module assignment capabilities in User Management
-  - Added user progress tracking in Analytics dashboard
-  - Enhanced user management with edit functionality for names and roles
-  - Fixed chat message ordering to display chronologically
-  - Improved system architecture for comprehensive user and training management
 
 - June 24, 2025: Enhanced training module creation workflow
   - Modified upload flow to analyze content without auto-saving

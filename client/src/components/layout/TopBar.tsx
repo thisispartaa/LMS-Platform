@@ -10,6 +10,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Bell, Settings, LogOut, User } from "lucide-react";
+import { queryClient } from "@/lib/queryClient";
 
 export default function TopBar() {
   const { user } = useAuth();
@@ -53,7 +54,7 @@ export default function TopBar() {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="flex items-center space-x-2 hover:bg-accent">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user?.avatarUrl || undefined} />
+                  <AvatarImage src={(user as any)?.profileImageUrl || undefined} />
                   <AvatarFallback className="text-xs">{getUserInitials(user)}</AvatarFallback>
                 </Avatar>
                 <span className="text-sm font-medium hidden sm:block">{getUserDisplayName(user)}</span>
@@ -68,18 +69,30 @@ export default function TopBar() {
               <DropdownMenuItem 
                 onClick={async () => {
                   try {
-                    await fetch('/api/auth/logout', { 
+                    // Try local logout first for invited users
+                    const localResponse = await fetch('/api/auth/local/logout', { 
                       method: 'POST',
                       credentials: 'include'
                     });
+                    
+                    if (!localResponse.ok) {
+                      // Fallback to Replit logout
+                      await fetch('/api/auth/logout', { 
+                        method: 'POST',
+                        credentials: 'include'
+                      });
+                    }
+                    
                     // Clear any cached user data
                     queryClient.clear();
+                    localStorage.clear();
+                    
                     // Force page reload to clear all state
-                    window.location.reload();
+                    window.location.replace('/');
                   } catch (error) {
                     console.error('Sign out error:', error);
                     // Force reload even if logout fails
-                    window.location.reload();
+                    window.location.replace('/');
                   }
                 }} 
                 className="text-red-600"

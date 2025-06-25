@@ -10,7 +10,7 @@ import Dashboard from "@/pages/Dashboard";
 import TrainingModules from "@/pages/TrainingModules";
 import UploadContent from "@/pages/UploadContent";
 import QuizManagement from "@/pages/QuizManagement";
-import UserManagement from "@/pages/UserManagement";
+import UserManagement from "@/pages/UserManagement2";
 import Settings from "@/pages/Settings";
 import EmployeeDashboard from "@/pages/EmployeeDashboard";
 import NotFound from "@/pages/not-found";
@@ -19,8 +19,7 @@ import TopBar from "@/components/layout/TopBar";
 import ChatbotWidget from "@/components/chatbot/ChatbotWidget";
 
 // Lazy load heavy components
-const UserManagement2 = lazy(() => import("./pages/UserManagement2"));
-const Analytics2 = lazy(() => import("./pages/Analytics2"));
+const Analytics = lazy(() => import("./pages/Analytics2"));
 
 function Router() {
   const { user, isLoading } = useAuth();
@@ -70,8 +69,8 @@ function Router() {
               <Route path="/modules" component={TrainingModules} />
               <Route path="/upload" component={UploadContent} />
               <Route path="/quizzes" component={QuizManagement} />
-              <Route path="/users" component={UserManagement2} />
-              <Route path="/analytics" component={Analytics2} />
+              <Route path="/users" component={UserManagement} />
+              <Route path="/analytics" component={Analytics} />
               <Route path="/settings" component={Settings} />
               <Route component={NotFound} />
             </Switch>
