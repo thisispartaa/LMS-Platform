@@ -224,12 +224,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/quiz-questions', isAuthenticated, async (req, res) => {
     try {
-      const questionData = insertQuizQuestionSchema.parse(req.body);
+      // Get the count of existing questions for this module to set order
+      const existingQuestions = await storage.getQuizQuestionsByModule(req.body.moduleId);
+      const nextOrder = existingQuestions.length + 1;
+      
+      const questionData = insertQuizQuestionSchema.parse({
+        ...req.body,
+        order: nextOrder
+      });
+      
       const question = await storage.createQuizQuestion(questionData);
       res.json(question);
     } catch (error) {
       console.error("Error creating quiz question:", error);
-      res.status(500).json({ message: "Failed to create quiz question" });
+      res.status(500).json({ message: "Failed to create quiz question", error: error.message });
     }
   });
 

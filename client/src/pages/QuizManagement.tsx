@@ -81,6 +81,7 @@ export default function QuizManagement() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/quiz-questions", selectedModuleId] });
       setShowAddQuestionDialog(false);
+      // Reset form to default state
       setNewQuestion({
         questionText: "",
         questionType: "multiple_choice",

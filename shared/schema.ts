@@ -221,6 +221,8 @@ export const insertTrainingModuleSchema = createInsertSchema(trainingModules).om
 export const insertQuizQuestionSchema = createInsertSchema(quizQuestions).omit({
   id: true,
   createdAt: true,
+}).extend({
+  order: z.number().optional(),
 });
 
 export const insertUserModuleAssignmentSchema = createInsertSchema(userModuleAssignments).omit({
