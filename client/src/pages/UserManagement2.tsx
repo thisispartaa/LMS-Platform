@@ -52,6 +52,9 @@ export default function UserManagement() {
     queryKey: ["/api/training-modules"],
   });
 
+  // Filter only published modules for assignment
+  const publishedModules = trainingModules?.filter(module => module.status === 'published') || [];
+
   const inviteForm = useForm<InviteUserForm>({
     resolver: zodResolver(inviteUserSchema),
     defaultValues: {
@@ -217,55 +220,58 @@ export default function UserManagement() {
         {/* Users List */}
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
           {users?.map((user) => (
-            <Card key={user.id}>
-              <CardHeader>
-                <div className="flex items-center space-x-4">
-                  <Avatar>
-                    <AvatarImage src={(user as any).avatarUrl || undefined} />
-                    <AvatarFallback>{getUserInitials(user)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1">
-                    <CardTitle className="text-base">{getUserDisplayName(user)}</CardTitle>
-                    <CardDescription>{user.email}</CardDescription>
+            <Card key={user.id} className="hover:shadow-md transition-shadow">
+              <CardHeader className="pb-3">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-3">
+                    <Avatar className="h-10 w-10">
+                      <AvatarImage src={(user as any).avatarUrl || undefined} />
+                      <AvatarFallback className="text-sm">{getUserInitials(user)}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <CardTitle className="text-sm font-medium">{getUserDisplayName(user)}</CardTitle>
+                      <CardDescription className="text-xs">{user.email}</CardDescription>
+                    </div>
                   </div>
+                  <Badge 
+                    variant={user.role === 'admin' ? 'default' : user.role === 'trainer' ? 'secondary' : 'outline'}
+                    className="text-xs"
+                  >
+                    {user.role}
+                  </Badge>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2">
-                    <Badge variant={user.role === 'admin' ? 'default' : user.role === 'trainer' ? 'secondary' : 'outline'}>
-                      {user.role}
-                    </Badge>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedUser(user);
-                        editForm.reset({
-                          firstName: user.firstName || "",
-                          lastName: user.lastName || "",
-                          role: user.role,
-                        });
-                        setIsEditDialogOpen(true);
-                      }}
-                    >
-                      <Edit className="h-4 w-4 mr-1" />
-                      Edit
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setSelectedUser(user);
-                        setIsAssignDialogOpen(true);
-                      }}
-                    >
-                      <Plus className="h-4 w-4 mr-1" />
-                      Assign Module
-                    </Button>
-                  </div>
+              <CardContent className="pt-0">
+                <div className="flex space-x-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      editForm.reset({
+                        firstName: user.firstName || "",
+                        lastName: user.lastName || "",
+                        role: user.role,
+                      });
+                      setIsEditDialogOpen(true);
+                    }}
+                  >
+                    <Edit className="h-3 w-3 mr-1" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => {
+                      setSelectedUser(user);
+                      setIsAssignDialogOpen(true);
+                    }}
+                  >
+                    <Plus className="h-3 w-3 mr-1" />
+                    Assign
+                  </Button>
                 </div>
               </CardContent>
             </Card>
@@ -444,7 +450,7 @@ export default function UserManagement() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {trainingModules?.map((module) => (
+                          {publishedModules.map((module) => (
                             <SelectItem key={module.id} value={module.id.toString()}>
                               {module.title} ({module.learningStage})
                             </SelectItem>

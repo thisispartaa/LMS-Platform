@@ -60,36 +60,7 @@ export default function Sidebar() {
           );
         })}
       </nav>
-      
-      <div className="p-4 border-t border-gray-200">
-        <div className="flex items-center space-x-3 mb-4">
-          <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-            <span className="text-white text-sm font-medium">
-              {user?.firstName?.[0] || user?.email?.[0] || "U"}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-neutral-dark truncate">
-              {user?.firstName && user?.lastName 
-                ? `${user.firstName} ${user.lastName}`
-                : user?.email || "User"
-              }
-            </p>
-            <p className="text-xs text-neutral-medium truncate capitalize">
-              {user?.role || "Employee"}
-            </p>
-          </div>
-        </div>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-neutral-medium hover:text-neutral-dark"
-          onClick={() => window.location.href = "/api/logout"}
-        >
-          <LogOut className="h-4 w-4 mr-2" />
-          Sign Out
-        </Button>
-      </div>
+
     </aside>
   );
 }

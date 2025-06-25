@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -26,9 +26,17 @@ const editQuestionSchema = z.object({
 type EditQuestionForm = z.infer<typeof editQuestionSchema>;
 
 export default function QuizManagement() {
-  const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
+  const [selectedModuleId, setSelectedModuleId] = useState<string>("");
   const [editingQuestion, setEditingQuestion] = useState<any | null>(null);
   const [showEditDialog, setShowEditDialog] = useState(false);
+  const [showAddQuestionDialog, setShowAddQuestionDialog] = useState(false);
+  const [newQuestion, setNewQuestion] = useState({
+    questionText: "",
+    questionType: "multiple_choice" as "multiple_choice" | "true_false",
+    options: ["", "", "", ""],
+    correctAnswer: "",
+    explanation: ""
+  });
   const { toast } = useToast();
   
   // Fetch training modules
@@ -51,41 +59,58 @@ export default function QuizManagement() {
 
   const form = useForm<EditQuestionForm>({
     resolver: zodResolver(editQuestionSchema),
+    defaultValues: {
+      questionText: "",
+      questionType: "multiple_choice",
+      options: [],
+      correctAnswer: "",
+      explanation: "",
+    },
   });
 
   const createQuestionMutation = useMutation({
     mutationFn: async (data: any) => {
-      await apiRequest("POST", "/api/quiz-questions", data);
+      const response = await fetch("/api/quiz-questions", {
+        method: 'POST',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error('Failed to create question');
+      return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-questions", selectedModuleId] });
+      setShowAddQuestionDialog(false);
+      setNewQuestion({
+        questionText: "",
+        questionType: "multiple_choice",
+        options: ["", "", "", ""],
+        correctAnswer: "",
+        explanation: ""
+      });
       toast({
-        title: "Question created",
-        description: "The quiz question has been created successfully.",
-      });
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/quiz-questions", selectedModuleId] 
+        title: "Success",
+        description: "Question added successfully"
       });
     },
-  });
-
-  const deleteQuestionMutation = useMutation({
-    mutationFn: async (id: number) => {
-      await apiRequest("DELETE", `/api/quiz-questions/${id}`);
-    },
-    onSuccess: () => {
+    onError: (error: any) => {
+      console.error('Question creation error:', error);
       toast({
-        title: "Question deleted",
-        description: "The quiz question has been deleted successfully.",
+        title: "Error",
+        description: error?.message || "Failed to add question",
+        variant: "destructive"
       });
-      queryClient.invalidateQueries({ 
-        queryKey: ["/api/quiz-questions", selectedModuleId] 
-      });
-    },
+    }
   });
 
   const updateQuestionMutation = useMutation({
     mutationFn: async (data: EditQuestionForm & { id: number }) => {
-      const response = await apiRequest("PUT", `/api/quiz-questions/${data.id}`, data);
+      const response = await fetch(`/api/quiz-questions/${data.id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+        headers: { 'Content-Type': 'application/json' }
+      });
+      if (!response.ok) throw new Error('Failed to update question');
       return response.json();
     },
     onSuccess: () => {
@@ -106,16 +131,29 @@ export default function QuizManagement() {
     },
   });
 
-  const getQuestionTypeDisplay = (type: string) => {
-    switch (type) {
-      case 'multiple_choice':
-        return 'Multiple Choice';
-      case 'true_false':
-        return 'True/False';
-      default:
-        return type;
-    }
-  };
+  const deleteQuestionMutation = useMutation({
+    mutationFn: async (questionId: number) => {
+      const response = await fetch(`/api/quiz-questions/${questionId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) throw new Error('Failed to delete question');
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/quiz-questions", selectedModuleId] });
+      toast({
+        title: "Question deleted successfully",
+        description: "The quiz question has been removed.",
+      });
+    },
+    onError: () => {
+      toast({
+        title: "Delete failed",
+        description: "There was an error deleting the question.",
+        variant: "destructive",
+      });
+    },
+  });
 
   const handleEditQuestion = (question: any) => {
     setEditingQuestion(question);
@@ -140,19 +178,26 @@ export default function QuizManagement() {
     }
   };
 
-  const handleCreateQuestion = () => {
-    if (!selectedModuleId) return;
-    
-    const newQuestion = {
-      moduleId: selectedModuleId,
-      questionText: "New question text",
-      questionType: "multiple_choice",
-      options: ["Option 1", "Option 2", "Option 3", "Option 4"],
-      correctAnswer: "Option 1",
-      explanation: "Explanation for the correct answer"
+  const handleAddQuestion = () => {
+    if (!selectedModuleId || !newQuestion.questionText.trim() || !newQuestion.correctAnswer) {
+      toast({
+        title: "Error",
+        description: "Please fill in all required fields",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    const questionData = {
+      moduleId: parseInt(selectedModuleId),
+      questionText: newQuestion.questionText.trim(),
+      questionType: newQuestion.questionType,
+      options: newQuestion.questionType === "multiple_choice" ? newQuestion.options.filter(opt => opt.trim()) : undefined,
+      correctAnswer: newQuestion.correctAnswer,
+      explanation: newQuestion.explanation?.trim() || ""
     };
-    
-    createQuestionMutation.mutate(newQuestion);
+
+    createQuestionMutation.mutate(questionData);
   };
 
   return (
@@ -170,7 +215,10 @@ export default function QuizManagement() {
               <label className="text-sm font-medium text-neutral-dark mb-2 block">
                 Select Training Module
               </label>
-              <Select value={selectedModuleId?.toString()} onValueChange={(value) => setSelectedModuleId(Number(value))}>
+              <Select
+                value={selectedModuleId}
+                onValueChange={(value) => setSelectedModuleId(value)}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Choose a module to view its quizzes" />
                 </SelectTrigger>
@@ -183,6 +231,23 @@ export default function QuizManagement() {
                 </SelectContent>
               </Select>
             </div>
+
+            {selectedModuleId && (
+              <div className="flex justify-between items-center">
+                <h3 className="text-lg font-semibold">Quiz Questions</h3>
+                <Button 
+                  onClick={() => {
+                    if (selectedModuleId) {
+                      setShowAddQuestionDialog(true);
+                    }
+                  }}
+                  disabled={!selectedModuleId}
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Question
+                </Button>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -197,45 +262,43 @@ export default function QuizManagement() {
                 <span>Quiz Questions</span>
               </div>
               <Button
-                onClick={handleCreateQuestion}
+                onClick={() => setShowAddQuestionDialog(true)}
                 className="bg-primary hover:bg-primary-dark"
                 disabled={createQuestionMutation.isPending}
               >
                 <Plus className="h-4 w-4 mr-2" />
-                Add Question
+                {createQuestionMutation.isPending ? "Adding..." : "Add Question"}
               </Button>
             </CardTitle>
           </CardHeader>
           <CardContent>
             {questionsLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="text-neutral-medium">Loading quiz questions...</div>
+              <div className="text-center py-8">
+                <div className="text-neutral-medium">Loading questions...</div>
               </div>
             ) : quizQuestions.length === 0 ? (
               <div className="text-center py-8">
-                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <HelpCircle className="h-8 w-8 text-gray-400" />
-                </div>
-                <h3 className="text-lg font-medium text-neutral-dark mb-2">No Quiz Questions</h3>
-                <p className="text-neutral-medium">
-                  This module doesn't have any quiz questions yet.
-                </p>
+                <div className="text-neutral-medium mb-4">No quiz questions found for this module.</div>
+                <Button onClick={() => setShowAddQuestionDialog(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add First Question
+                </Button>
               </div>
             ) : (
               <div className="space-y-6">
                 {quizQuestions.map((question: any, index: number) => (
-                  <div key={question.id} className="border rounded-lg p-6 bg-white">
+                  <div key={question.id} className="border border-gray-200 rounded-lg p-6 bg-white">
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex-1">
-                        <div className="flex items-center space-x-3 mb-2">
-                          <Badge variant="outline" className="text-xs">
+                        <div className="flex items-center space-x-3 mb-3">
+                          <span className="text-sm font-medium text-neutral-dark bg-gray-100 px-2 py-1 rounded">
                             Question {index + 1}
-                          </Badge>
-                          <Badge variant="secondary" className="text-xs">
-                            {getQuestionTypeDisplay(question.questionType)}
+                          </span>
+                          <Badge variant="outline" className="text-xs">
+                            {question.questionType === 'multiple_choice' ? 'Multiple Choice' : 'True/False'}
                           </Badge>
                         </div>
-                        <h4 className="text-lg font-medium text-neutral-dark mb-3">
+                        <h4 className="text-lg font-medium text-neutral-dark mb-4">
                           {question.questionText}
                         </h4>
                       </div>
@@ -244,6 +307,7 @@ export default function QuizManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleEditQuestion(question)}
+                          className="text-neutral-dark hover:text-primary"
                         >
                           <Edit className="h-4 w-4 mr-1" />
                           Edit
@@ -252,7 +316,8 @@ export default function QuizManagement() {
                           variant="outline"
                           size="sm"
                           onClick={() => handleDeleteQuestion(question)}
-                          className="text-red-600 hover:text-red-700"
+                          className="text-red-600 hover:text-red-700 hover:border-red-300"
+                          disabled={deleteQuestionMutation.isPending}
                         >
                           <Trash2 className="h-4 w-4 mr-1" />
                           Delete
@@ -260,23 +325,14 @@ export default function QuizManagement() {
                       </div>
                     </div>
 
-                    {/* Options for multiple choice */}
+                    {/* Multiple choice options */}
                     {question.questionType === 'multiple_choice' && question.options && (
                       <div className="mb-4">
-                        <h5 className="text-sm font-medium text-neutral-dark mb-2">Options:</h5>
+                        <h5 className="text-sm font-medium text-neutral-dark mb-2">Answer Options:</h5>
                         <div className="space-y-2">
-                          {question.options.map((option: string, optionIndex: number) => (
-                            <div 
-                              key={optionIndex} 
-                              className={`p-3 rounded-lg border text-sm ${
-                                option === question.correctAnswer 
-                                  ? 'bg-green-50 border-green-200 text-green-700' 
-                                  : 'bg-gray-50 border-gray-200'
-                              }`}
-                            >
-                              <span className="font-medium mr-2">
-                                {String.fromCharCode(65 + optionIndex)}.
-                              </span>
+                          {question.options.map((option: string, optIndex: number) => (
+                            <div key={optIndex} className="flex items-center space-x-2 text-sm text-neutral-medium">
+                              <span className="font-medium">{String.fromCharCode(65 + optIndex)}.</span>
                               {option}
                               {option === question.correctAnswer && (
                                 <span className="ml-2 text-green-600 font-medium">✓ Correct</span>
@@ -328,7 +384,7 @@ export default function QuizManagement() {
                     <FormLabel>Question Text</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Enter your question..."
+                        placeholder="Enter your question here..."
                         className="resize-none"
                         rows={3}
                         {...field}
@@ -449,6 +505,125 @@ export default function QuizManagement() {
               </div>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Question Dialog */}
+      <Dialog open={showAddQuestionDialog} onOpenChange={setShowAddQuestionDialog}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Add New Question</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium">Question Text</label>
+              <Textarea
+                placeholder="Enter your question here..."
+                value={newQuestion.questionText}
+                onChange={(e) => setNewQuestion(prev => ({ ...prev, questionText: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium">Question Type</label>
+              <Select
+                value={newQuestion.questionType}
+                onValueChange={(value: "multiple_choice" | "true_false") => 
+                  setNewQuestion(prev => ({ 
+                    ...prev, 
+                    questionType: value,
+                    options: value === "true_false" ? ["True", "False"] : ["", "", "", ""],
+                    correctAnswer: ""
+                  }))
+                }
+              >
+                <SelectTrigger className="mt-1">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="multiple_choice">Multiple Choice</SelectItem>
+                  <SelectItem value="true_false">True/False</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {newQuestion.questionType === "multiple_choice" && (
+              <div>
+                <label className="text-sm font-medium">Answer Options</label>
+                <div className="space-y-2 mt-1">
+                  {newQuestion.options.map((option, index) => (
+                    <Input
+                      key={index}
+                      placeholder={`Option ${index + 1}`}
+                      value={option}
+                      onChange={(e) => {
+                        const newOptions = [...newQuestion.options];
+                        newOptions[index] = e.target.value;
+                        setNewQuestion(prev => ({ ...prev, options: newOptions }));
+                      }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div>
+              <label className="text-sm font-medium">Correct Answer</label>
+              {newQuestion.questionType === "multiple_choice" ? (
+                <Select
+                  value={newQuestion.correctAnswer}
+                  onValueChange={(value) => setNewQuestion(prev => ({ ...prev, correctAnswer: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Select the correct answer" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {newQuestion.options.filter(option => option.trim()).map((option, index) => (
+                      <SelectItem key={index} value={option}>
+                        {option}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Select
+                  value={newQuestion.correctAnswer}
+                  onValueChange={(value) => setNewQuestion(prev => ({ ...prev, correctAnswer: value }))}
+                >
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="True">True</SelectItem>
+                    <SelectItem value="False">False</SelectItem>
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+
+            <div>
+              <label className="text-sm font-medium">Explanation (Optional)</label>
+              <Textarea
+                placeholder="Explain why this is the correct answer..."
+                value={newQuestion.explanation}
+                onChange={(e) => setNewQuestion(prev => ({ ...prev, explanation: e.target.value }))}
+                className="mt-1"
+              />
+            </div>
+          </div>
+          
+          <div className="flex justify-end space-x-2 mt-6">
+            <Button variant="outline" onClick={() => setShowAddQuestionDialog(false)}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleAddQuestion} 
+              disabled={createQuestionMutation.isPending || !newQuestion.questionText.trim() || !newQuestion.correctAnswer}
+            >
+              {createQuestionMutation.isPending ? "Adding..." : "Add Question"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
