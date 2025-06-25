@@ -1,16 +1,25 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Bot, User, Send, X } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { ChatMessage, ChatResponse } from "@/types";
+import { useAuth } from "@/hooks/useAuth";
 
 export default function ChatbotWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [message, setMessage] = useState("");
+  const { user } = useAuth();
+
+  // Clear chat history when user changes or logs out
+  useEffect(() => {
+    if (user) {
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/history"] });
+    }
+  }, [user?.id]);
 
   const { data: chatHistory, refetch } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat/history"],
@@ -59,8 +68,8 @@ export default function ChatbotWidget() {
       </Button>
       
       {isOpen && (
-        <Card className="absolute bottom-16 right-0 w-96 h-96 shadow-2xl border border-gray-200 flex flex-col">
-          <CardHeader className="p-4 bg-primary text-white rounded-t-lg flex flex-row items-center justify-between space-y-0">
+        <Card className="absolute bottom-16 right-0 w-96 h-[500px] shadow-2xl border border-gray-200 flex flex-col">
+          <CardHeader className="p-4 bg-primary text-white rounded-t-lg flex flex-row items-center justify-between space-y-0 flex-shrink-0">
             <div className="flex items-center space-x-3">
               <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center">
                 <Bot className="h-4 w-4" />
@@ -80,56 +89,59 @@ export default function ChatbotWidget() {
             </Button>
           </CardHeader>
           
-          <CardContent className="flex-1 p-0 flex flex-col">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
+          <CardContent className="flex-1 p-0 flex flex-col min-h-0">
+            <ScrollArea className="flex-1 h-full">
+              <div className="p-4 space-y-4">
                 {/* Welcome message */}
-                <div className="flex items-start space-x-2">
-                  <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                    <Bot className="h-4 w-4 text-primary" />
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-gray-100 rounded-lg px-3 py-2">
-                      <p className="text-sm text-neutral-dark">
-                        Hello! I'm AmazeBot, your training assistant. I can help you with questions about your training modules, explain concepts, and suggest next steps. What would you like to know?
-                      </p>
+                {(!chatHistory || chatHistory.length === 0) && (
+                  <div className="flex items-start space-x-2">
+                    <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                      <Bot className="h-4 w-4 text-primary" />
                     </div>
-                    <p className="text-xs text-neutral-medium mt-1">Just now</p>
+                    <div className="flex-1">
+                      <div className="bg-gray-100 rounded-lg px-3 py-2">
+                        <p className="text-sm text-neutral-dark">
+                          Hi! I'm AmazeBot, your training assistant. I can help you with questions about your training materials, explain quiz concepts, and guide your learning progress. What would you like to know?
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                </div>
+                )}
 
                 {/* Chat history */}
                 {chatHistory?.map((chat) => (
-                  <div key={chat.id} className="space-y-4">
+                  <div key={chat.id} className="space-y-3">
                     {/* User message */}
-                    <div className="flex items-start space-x-2 flex-row-reverse">
-                      <div className="w-7 h-7 bg-success/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <User className="h-4 w-4 text-success" />
-                      </div>
-                      <div className="flex-1 text-right">
-                        <div className="bg-primary text-white rounded-lg px-3 py-2 inline-block">
-                          <p className="text-sm">{chat.message}</p>
+                    <div className="flex items-start space-x-2 justify-end">
+                      <div className="flex-1 text-right max-w-[80%]">
+                        <div className="bg-primary text-white rounded-lg px-3 py-2 inline-block text-left break-words">
+                          <p className="text-sm whitespace-pre-wrap">{chat.message}</p>
                         </div>
                         <p className="text-xs text-neutral-medium mt-1">
                           {new Date(chat.createdAt!).toLocaleTimeString()}
                         </p>
+                      </div>
+                      <div className="w-7 h-7 bg-success/10 rounded-full flex items-center justify-center flex-shrink-0">
+                        <User className="h-4 w-4 text-success" />
                       </div>
                     </div>
 
                     {/* Bot response */}
-                    <div className="flex items-start space-x-2">
-                      <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Bot className="h-4 w-4 text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="bg-gray-100 rounded-lg px-3 py-2">
-                          <p className="text-sm text-neutral-dark">{chat.response}</p>
+                    {chat.response && (
+                      <div className="flex items-start space-x-2">
+                        <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
+                          <Bot className="h-4 w-4 text-primary" />
                         </div>
-                        <p className="text-xs text-neutral-medium mt-1">
-                          {new Date(chat.createdAt!).toLocaleTimeString()}
-                        </p>
+                        <div className="flex-1 max-w-[80%]">
+                          <div className="bg-gray-100 rounded-lg px-3 py-2">
+                            <p className="text-sm text-neutral-dark whitespace-pre-wrap break-words">{chat.response}</p>
+                          </div>
+                          <p className="text-xs text-neutral-medium mt-1">
+                            {new Date(chat.createdAt!).toLocaleTimeString()}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
                   </div>
                 ))}
 
@@ -139,7 +151,7 @@ export default function ChatbotWidget() {
                     <div className="w-7 h-7 bg-primary/10 rounded-full flex items-center justify-center flex-shrink-0">
                       <Bot className="h-4 w-4 text-primary" />
                     </div>
-                    <div className="flex-1">
+                    <div className="flex-1 max-w-[80%]">
                       <div className="bg-gray-100 rounded-lg px-3 py-2">
                         <div className="flex space-x-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
@@ -161,7 +173,7 @@ export default function ChatbotWidget() {
                   value={message}
                   onChange={(e) => setMessage(e.target.value)}
                   onKeyDown={handleKeyPress}
-                  className="flex-1 text-sm resize-none"
+                  className="flex-1 text-sm"
                   disabled={sendMessageMutation.isPending}
                 />
                 <Button
