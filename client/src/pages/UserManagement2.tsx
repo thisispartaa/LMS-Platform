@@ -130,6 +130,12 @@ export default function UserManagement() {
   // Remove assignment mutation
   const removeAssignmentMutation = useMutation({
     mutationFn: async ({ userId, moduleId }: { userId: string; moduleId: number }) => {
+      console.log('Mutation called with:', { userId, moduleId, moduleIdType: typeof moduleId });
+      
+      if (!moduleId || isNaN(moduleId)) {
+        throw new Error('Invalid module ID');
+      }
+      
       const response = await fetch(`/api/users/${userId}/remove-module/${moduleId}`, {
         method: 'DELETE'
       });
@@ -144,6 +150,7 @@ export default function UserManagement() {
       });
     },
     onError: (error) => {
+      console.error('Remove assignment error:', error);
       toast({
         title: "Error",
         description: "Failed to remove assignment",
@@ -561,12 +568,15 @@ export default function UserManagement() {
                         {progress.quizScore !== null ? `${Math.round(progress.quizScore)}%` : '-'}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {!progress.completedAt && (
+                        {!progress.completedAt && progress.moduleId && (
                           <button
-                            onClick={() => removeAssignmentMutation.mutate({
-                              userId: progress.userId,
-                              moduleId: progress.moduleId
-                            })}
+                            onClick={() => {
+                              console.log('Removing assignment:', { userId: progress.userId, moduleId: progress.moduleId });
+                              removeAssignmentMutation.mutate({
+                                userId: progress.userId,
+                                moduleId: parseInt(progress.moduleId)
+                              });
+                            }}
                             disabled={removeAssignmentMutation.isPending}
                             className="text-red-600 hover:text-red-900 disabled:opacity-50"
                           >
