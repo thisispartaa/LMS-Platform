@@ -61,6 +61,7 @@ export interface IStorage {
   getUserAssignments(userId: string): Promise<UserModuleAssignment[]>;
   getModuleAssignments(moduleId: number): Promise<UserModuleAssignment[]>;
   completeAssignment(userId: string, moduleId: number): Promise<void>;
+  removeAssignment(userId: string, moduleId: number): Promise<void>;
   
   // Quiz result operations
   createQuizResult(result: InsertQuizResult): Promise<QuizResult>;
@@ -264,11 +265,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserAssignments(userId: string): Promise<UserModuleAssignment[]> {
-    return await db
+    console.log('getUserAssignments called with userId:', userId, typeof userId);
+    const result = await db
       .select()
       .from(userModuleAssignments)
       .where(eq(userModuleAssignments.userId, userId))
       .orderBy(desc(userModuleAssignments.assignedAt));
+    
+    console.log('getUserAssignments result:', result);
+    return result;
   }
 
   async getModuleAssignments(moduleId: number): Promise<UserModuleAssignment[]> {
@@ -356,6 +361,18 @@ export class DatabaseStorage implements IStorage {
     await db
       .delete(chatMessages)
       .where(eq(chatMessages.userId, userId));
+  }
+
+  // Remove assignment
+  async removeAssignment(userId: string, moduleId: number): Promise<void> {
+    await db
+      .delete(userModuleAssignments)
+      .where(
+        and(
+          eq(userModuleAssignments.userId, userId),
+          eq(userModuleAssignments.moduleId, moduleId)
+        )
+      );
   }
 
   // Analytics operations

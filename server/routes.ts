@@ -433,14 +433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { userId, moduleId } = req.params;
       
-      // Delete the assignment
-      await storage.db.delete(userModuleAssignments)
-        .where(
-          and(
-            eq(userModuleAssignments.userId, userId),
-            eq(userModuleAssignments.moduleId, parseInt(moduleId))
-          )
-        );
+      // Delete the assignment using storage method
+      await storage.removeAssignment(userId, parseInt(moduleId));
 
       res.json({ message: 'Assignment removed successfully' });
     } catch (error) {

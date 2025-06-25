@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Users, UserCheck, Clock, Award, Plus, Edit, UserPlus } from "lucide-react";
+import { Users, UserCheck, Clock, Award, Plus, Edit, UserPlus, GraduationCap, CheckCircle } from "lucide-react";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { User, TrainingModule } from "@/types";
@@ -50,6 +50,11 @@ export default function UserManagement() {
 
   const { data: trainingModules } = useQuery<TrainingModule[]>({
     queryKey: ["/api/training-modules"],
+  });
+
+  // Fetch user progress data
+  const { data: userProgress = [] } = useQuery({
+    queryKey: ["/api/analytics/user-progress"],
   });
 
   // Filter only published modules for assignment
@@ -473,6 +478,90 @@ export default function UserManagement() {
             </Form>
           </DialogContent>
         </Dialog>
+
+        {/* Training Progress Table */}
+        <div className="mt-8">
+          <div className="bg-white shadow overflow-hidden sm:rounded-md">
+            <div className="px-4 py-5 sm:px-6">
+              <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center">
+                <GraduationCap className="h-5 w-5 mr-2" />
+                User Training Progress
+              </h3>
+              <p className="mt-1 max-w-2xl text-sm text-gray-500">
+                Track and manage user training assignments and progress
+              </p>
+            </div>
+            <div className="border-t border-gray-200">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">User</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Module</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Assigned</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Quiz Score</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {userProgress.map((progress: any, index: number) => (
+                    <tr key={index}>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div>
+                          <div className="text-sm font-medium text-gray-900">{progress.userName || 'N/A'}</div>
+                          <div className="text-sm text-gray-500">{progress.userEmail}</div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{progress.moduleTitle}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(progress.assignedAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        {progress.completedAt ? (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            Completed
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">
+                            <Clock className="h-3 w-3 mr-1" />
+                            Pending
+                          </span>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {progress.quizScore !== null ? `${Math.round(progress.quizScore)}%` : '-'}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        {!progress.completedAt && (
+                          <button
+                            onClick={() => removeAssignmentMutation.mutate({
+                              userId: progress.userId,
+                              moduleId: progress.moduleId
+                            })}
+                            disabled={removeAssignmentMutation.isPending}
+                            className="text-red-600 hover:text-red-900 disabled:opacity-50"
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {userProgress.length === 0 && (
+                    <tr>
+                      <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
+                        No training assignments found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );

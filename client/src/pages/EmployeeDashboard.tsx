@@ -68,7 +68,11 @@ export default function EmployeeDashboard() {
   const { data: assignedModules = [], isLoading: modulesLoading } = useQuery({
     queryKey: ["/api/user/assigned-modules"],
     queryFn: getQueryFn({ on401: "throw" }),
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
+
+  console.log('Assigned modules data:', assignedModules);
 
   // Fetch user's progress stats
   const { data: progressStats } = useQuery({
@@ -253,12 +257,19 @@ export default function EmployeeDashboard() {
         </TabsList>
 
         <TabsContent value="pending" className="space-y-4">
-          {pendingModules.length === 0 ? (
+          {modulesLoading ? (
+            <Card>
+              <CardContent className="text-center py-8">
+                <div className="text-lg">Loading your assignments...</div>
+              </CardContent>
+            </Card>
+          ) : pendingModules.length === 0 ? (
             <Card>
               <CardContent className="text-center py-8">
                 <CheckCircle className="h-12 w-12 text-green-600 mx-auto mb-4" />
                 <h3 className="text-lg font-semibold">All caught up!</h3>
                 <p className="text-gray-600">You've completed all your assigned training modules.</p>
+                <p className="text-sm text-gray-500 mt-2">Debug: Found {(assignedModules as AssignedModule[]).length} total assignments</p>
               </CardContent>
             </Card>
           ) : (
