@@ -307,7 +307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const assignment = await storage.assignModuleToUser({
         userId,
         moduleId: parseInt(moduleId),
-        assignedAt: new Date()
+        assignedBy: userId
       });
       
       res.status(201).json(assignment);
@@ -374,7 +374,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ response });
     } catch (error) {
       console.error("Error processing chatbot request:", error);
-      res.status(500).json({ message: "Failed to process chatbot request", error: error.message });
+      res.status(500).json({ message: "Failed to process chatbot request", error: (error as Error).message });
     }
   };
 
@@ -402,6 +402,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error clearing chat history:", error);
       res.status(500).json({ message: "Failed to clear chat history" });
+    }
+  });
+
+  // Analytics routes
+  app.get('/api/analytics/user-progress', isAuthenticated, async (req, res) => {
+    try {
+      const progress = await storage.getUserProgress();
+      res.json(progress);
+    } catch (error) {
+      console.error("Error fetching user progress:", error);
+      res.status(500).json({ message: "Failed to fetch user progress" });
     }
   });
 

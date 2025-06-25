@@ -112,6 +112,34 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(users).where(eq(users.role, role as any));
   }
 
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async createUser(userData: any): Promise<User> {
+    const [created] = await db
+      .insert(users)
+      .values({
+        id: userData.email,
+        email: userData.email,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        role: userData.role,
+        avatarUrl: null
+      } as any)
+      .returning();
+    return created;
+  }
+
+  async updateUser(id: string, updates: any): Promise<User> {
+    const [updated] = await db
+      .update(users)
+      .set(updates)
+      .where(eq(users.id, id))
+      .returning();
+    return updated;
+  }
+
   // Document operations
   async createDocument(document: InsertDocument): Promise<Document> {
     const [created] = await db.insert(documents).values({
@@ -330,26 +358,6 @@ export class DatabaseStorage implements IStorage {
       .where(eq(chatMessages.userId, userId));
   }
 
-  async getUserProgress(): Promise<any[]> {
-    const progress = await db
-      .select({
-        userId: userModuleAssignments.userId,
-        userName: users.firstName,
-        userEmail: users.email,
-        moduleTitle: trainingModules.title,
-        assignedAt: userModuleAssignments.assignedAt,
-        completedAt: userModuleAssignments.completedAt,
-        quizScore: quizResults.score
-      })
-      .from(userModuleAssignments)
-      .leftJoin(users, eq(userModuleAssignments.userId, users.id))
-      .leftJoin(trainingModules, eq(userModuleAssignments.moduleId, trainingModules.id))
-      .leftJoin(quizResults, eq(userModuleAssignments.userId, quizResults.userId))
-      .orderBy(userModuleAssignments.assignedAt);
-
-    return progress;
-  }
-
   // Analytics operations
   async getDashboardStats(): Promise<{
     totalModules: number;
@@ -382,26 +390,7 @@ export class DatabaseStorage implements IStorage {
     };
   }
 
-  async getUserProgress(): Promise<any[]> {
-    const progress = await db
-      .select({
-        userId: userModuleAssignments.userId,
-        userName: users.firstName,
-        userEmail: users.email,
-        moduleTitle: trainingModules.title,
-        assignedAt: userModuleAssignments.assignedAt,
-        completedAt: userModuleAssignments.completedAt,
-        quizScore: quizResults.score
-      })
-      .from(userModuleAssignments)
-      .leftJoin(users, eq(userModuleAssignments.userId, users.id))
-      .leftJoin(trainingModules, eq(userModuleAssignments.moduleId, trainingModules.id))
-      .leftJoin(quizResults, eq(userModuleAssignments.userId, quizResults.userId))
-      .orderBy(userModuleAssignments.assignedAt);
-
-    return progress;
-  }
-
+  // User progress analytics
   async getUserProgress(): Promise<any[]> {
     const progress = await db
       .select({

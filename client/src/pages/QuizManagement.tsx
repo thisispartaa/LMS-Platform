@@ -175,7 +175,7 @@ export default function QuizManagement() {
                   <SelectValue placeholder="Choose a module to view its quizzes" />
                 </SelectTrigger>
                 <SelectContent>
-                  {modules?.map((module: any) => (
+                  {(modules as any[])?.map((module: any) => (
                     <SelectItem key={module.id} value={module.id.toString()}>
                       {module.title}
                     </SelectItem>

@@ -76,7 +76,7 @@ export default function Analytics() {
               <BookOpen className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.totalModules || 0}</div>
+              <div className="text-2xl font-bold">{(stats as any)?.totalModules || 0}</div>
               <p className="text-xs text-muted-foreground">Published training modules</p>
             </CardContent>
           </Card>
@@ -86,7 +86,7 @@ export default function Analytics() {
               <Users className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.activeUsers || 0}</div>
+              <div className="text-2xl font-bold">{(stats as any)?.activeUsers || 0}</div>
               <p className="text-xs text-muted-foreground">Registered users</p>
             </CardContent>
           </Card>
@@ -96,7 +96,7 @@ export default function Analytics() {
               <Award className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.completedQuizzes || 0}</div>
+              <div className="text-2xl font-bold">{(stats as any)?.completedQuizzes || 0}</div>
               <p className="text-xs text-muted-foreground">Total quiz attempts</p>
             </CardContent>
           </Card>
@@ -106,7 +106,7 @@ export default function Analytics() {
               <TrendingUp className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats?.averageScore || 0}%</div>
+              <div className="text-2xl font-bold">{(stats as any)?.averageScore || 0}%</div>
               <p className="text-xs text-muted-foreground">Across all quizzes</p>
             </CardContent>
           </Card>
