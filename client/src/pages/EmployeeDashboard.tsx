@@ -174,13 +174,13 @@ export default function EmployeeDashboard() {
     }
   };
 
-  const completedModules = assignedModules.filter((m: AssignedModule) => m.isCompleted);
-  const pendingModules = assignedModules.filter((m: AssignedModule) => !m.isCompleted);
-  const completionRate = assignedModules.length > 0 
-    ? Math.round((completedModules.length / assignedModules.length) * 100) 
+  const completedModules = (assignedModules as AssignedModule[]).filter((m: AssignedModule) => m.isCompleted);
+  const pendingModules = (assignedModules as AssignedModule[]).filter((m: AssignedModule) => !m.isCompleted);
+  const completionRate = (assignedModules as AssignedModule[]).length > 0 
+    ? Math.round((completedModules.length / (assignedModules as AssignedModule[]).length) * 100) 
     : 0;
 
-  if (!user || user.role !== 'employee') {
+  if (!user || (user as any).role !== 'employee') {
     return (
       <div className="flex items-center justify-center h-96">
         <div className="text-center">
@@ -206,7 +206,7 @@ export default function EmployeeDashboard() {
             <BookOpen className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{assignedModules.length}</div>
+            <div className="text-2xl font-bold">{(assignedModules as AssignedModule[]).length}</div>
             <p className="text-xs text-muted-foreground">Assigned to you</p>
           </CardContent>
         </Card>
