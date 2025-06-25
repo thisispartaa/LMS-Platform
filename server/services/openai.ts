@@ -158,17 +158,23 @@ export async function generateQuizQuestions(content: string, keyTopics: string[]
 export async function getChatbotResponse(
   userMessage: string,
   chatHistory: ChatMessage[],
-  userId: string
+  userId: string,
+  storage?: any
 ): Promise<string> {
   try {
     // Get user's training documents and progress for context
-    const { storage } = await import("../storage");
-    const userDocuments = await storage.getDocumentsByUser(userId);
-    const userModules = await storage.getUserAssignments(userId);
+    const storageInstance = storage || (await import("../storage")).storage;
+    const userDocuments = await storageInstance.getDocumentsByUser(userId);
+    const userModules = await storageInstance.getUserAssignments(userId);
+    const allModules = await storageInstance.getTrainingModules();
     
-    // Create context from uploaded documents
+    // Create context from uploaded documents and training modules
     const documentContext = userDocuments.map(doc => 
-      `Document: ${doc.originalName}\nSummary: ${doc.aiSummary}\nKey Topics: ${doc.keyTopics?.join(", ") || "None"}`
+      `Document: ${doc.originalName}\nSummary: ${doc.summary || doc.aiSummary}\nKey Topics: ${doc.keyTopics?.join(", ") || "None"}`
+    ).join("\n\n");
+
+    const moduleContext = allModules.map(module => 
+      `Module: ${module.title} (${module.learningStage})\nDescription: ${module.description}\nKey Topics: ${module.keyTopics?.join(", ") || "None"}`
     ).join("\n\n");
 
     const systemPrompt = `You are AmazeBot, an AI training assistant for the Amazech Training Platform. 
@@ -178,12 +184,16 @@ export async function getChatbotResponse(
     3. Providing feedback on training progress
     4. Offering study guidance and learning tips
     
-    AVAILABLE TRAINING CONTENT:
+    AVAILABLE TRAINING MODULES:
+    ${moduleContext || "No training modules available yet."}
+    
+    AVAILABLE TRAINING DOCUMENTS:
     ${documentContext || "No training documents uploaded yet."}
     
     USER TRAINING STATUS:
     - Has ${userModules.length} assigned training modules
     - Has access to ${userDocuments.length} training documents
+    - Total available modules: ${allModules.length}
     
     Guidelines:
     - Always refer to the specific training materials when answering questions

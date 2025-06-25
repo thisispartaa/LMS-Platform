@@ -309,12 +309,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserChatHistory(userId: string, limit: number = 20): Promise<ChatMessage[]> {
-    return await db
+    const messages = await db
       .select()
       .from(chatMessages)
       .where(eq(chatMessages.userId, userId))
       .orderBy(desc(chatMessages.createdAt))
       .limit(limit);
+    
+    // Return messages in chronological order (oldest first, newest last)
+    return messages.reverse();
   }
 
   // Analytics operations
