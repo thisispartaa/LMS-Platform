@@ -232,22 +232,7 @@ export default function QuizManagement() {
               </Select>
             </div>
 
-            {selectedModuleId && (
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">Quiz Questions</h3>
-                <Button 
-                  onClick={() => {
-                    if (selectedModuleId) {
-                      setShowAddQuestionDialog(true);
-                    }
-                  }}
-                  disabled={!selectedModuleId}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Add Question
-                </Button>
-              </div>
-            )}
+
           </div>
         </CardContent>
       </Card>
