@@ -32,6 +32,9 @@ export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   upsertUser(user: UpsertUser): Promise<User>;
   getUsersByRole(role: string): Promise<User[]>;
+  getAllUsers(): Promise<User[]>;
+  createUser(user: any): Promise<User>;
+  updateUser(id: string, updates: any): Promise<User>;
   
   // Document operations
   createDocument(document: InsertDocument): Promise<Document>;
@@ -72,6 +75,7 @@ export interface IStorage {
   // Chat operations
   createChatMessage(message: InsertChatMessage): Promise<ChatMessage>;
   getUserChatHistory(userId: string, limit?: number): Promise<ChatMessage[]>;
+  clearUserChatHistory(userId: string): Promise<void>;
   
   // Analytics operations
   getDashboardStats(): Promise<{
@@ -320,6 +324,12 @@ export class DatabaseStorage implements IStorage {
     return messages.reverse();
   }
 
+  async clearUserChatHistory(userId: string): Promise<void> {
+    await db
+      .delete(chatMessages)
+      .where(eq(chatMessages.userId, userId));
+  }
+
   // Analytics operations
   async getDashboardStats(): Promise<{
     totalModules: number;
@@ -350,6 +360,26 @@ export class DatabaseStorage implements IStorage {
       completedQuizzes: quizCountResult?.count || 0,
       averageScore: Math.round(Number(averageScoreResult?.average) || 0),
     };
+  }
+
+  async getUserProgress(): Promise<any[]> {
+    const progress = await db
+      .select({
+        userId: userModuleAssignments.userId,
+        userName: users.firstName,
+        userEmail: users.email,
+        moduleTitle: trainingModules.title,
+        assignedAt: userModuleAssignments.assignedAt,
+        completedAt: userModuleAssignments.completedAt,
+        quizScore: quizResults.score
+      })
+      .from(userModuleAssignments)
+      .leftJoin(users, eq(userModuleAssignments.userId, users.id))
+      .leftJoin(trainingModules, eq(userModuleAssignments.moduleId, trainingModules.id))
+      .leftJoin(quizResults, eq(userModuleAssignments.userId, quizResults.userId))
+      .orderBy(userModuleAssignments.assignedAt);
+
+    return progress;
   }
 }
 

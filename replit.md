@@ -135,15 +135,16 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 ## Recent Changes
 
-- June 25, 2025: Enhanced AmazeBot functionality and chat interface
-  - Fixed chat message ordering to display chronologically (oldest to newest)
-  - Enhanced AmazeBot with full database access to training materials
-  - Added contextual responses based on user's uploaded documents and modules
-  - Implemented proper scrollable chat interface with 500px height
-  - Added auto-scroll to bottom for new messages
-  - Chat history clears on user logout/refresh for privacy
-  - AmazeBot now provides FAQ responses, quiz explanations, and progress feedback
-  - Improved message layout with proper text wrapping and spacing
+- June 25, 2025: Major feature enhancements across platform
+  - Enhanced AmazeBot with database access and improved chat interface
+  - Added chat history clearing on page refresh/logout
+  - Implemented quiz question creation and deletion functionality
+  - Added user invitation system with default passwords
+  - Implemented module assignment capabilities in User Management
+  - Added user progress tracking in Analytics dashboard
+  - Enhanced user management with edit functionality for names and roles
+  - Fixed chat message ordering to display chronologically
+  - Improved system architecture for comprehensive user and training management
 
 - June 24, 2025: Enhanced training module creation workflow
   - Modified upload flow to analyze content without auto-saving

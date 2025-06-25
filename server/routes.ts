@@ -347,12 +347,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Clear chat history route
+  // Clear chat history route (called on page refresh)
   app.delete('/api/chat/history', isAuthenticated, async (req: any, res) => {
     try {
       const userId = req.user.claims.sub;
-      // This would require a new storage method to clear user's chat history
-      // For now, we'll just return success - the frontend invalidation handles the UI clearing
+      await storage.clearUserChatHistory(userId);
       res.json({ message: "Chat history cleared" });
     } catch (error) {
       console.error("Error clearing chat history:", error);

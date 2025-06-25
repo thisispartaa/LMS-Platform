@@ -21,6 +21,21 @@ export default function ChatbotWidget() {
     }
   }, [user?.id]);
 
+  // Clear chat history from database on page refresh
+  useEffect(() => {
+    const clearChatOnRefresh = async () => {
+      if (user) {
+        try {
+          await apiRequest("DELETE", "/api/chat/history");
+        } catch (error) {
+          console.error("Failed to clear chat history:", error);
+        }
+      }
+    };
+
+    clearChatOnRefresh();
+  }, [user]);
+
   const { data: chatHistory, refetch } = useQuery<ChatMessage[]>({
     queryKey: ["/api/chat/history"],
     enabled: isOpen,
