@@ -55,7 +55,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.sub || req.user.id;
       const fileType = getFileType(req.file.mimetype);
       
       // Process the uploaded file
@@ -90,7 +90,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create training module from uploaded content
   app.post('/api/create-training-module', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.sub || req.user.id;
       const { moduleData, fileInfo, quizQuestions } = req.body;
 
       // Save document to database
@@ -168,7 +168,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/training-modules', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.sub || req.user.id;
       const moduleData = insertTrainingModuleSchema.parse({
         ...req.body,
         createdBy: userId,
@@ -376,7 +376,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleChatRequest = async (req: any, res: any) => {
     try {
       const { message } = req.body;
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.sub || req.user.id;
       
       if (!message || !message.trim()) {
         return res.status(400).json({ message: "Message is required" });
@@ -411,7 +411,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat history route
   app.get('/api/chat/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.sub || req.user.id;
       const history = await storage.getUserChatHistory(userId, 50);
       res.json(history);
     } catch (error) {
@@ -423,7 +423,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clear chat history route (called on page refresh)
   app.delete('/api/chat/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
+      const userId = req.user.claims?.sub || req.user.id;
       await storage.clearUserChatHistory(userId);
       res.json({ message: "Chat history cleared" });
     } catch (error) {
