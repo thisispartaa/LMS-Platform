@@ -18,6 +18,7 @@ import {
   userModuleAssignments
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
+import "./types"; // Import type definitions
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Setup local authentication
@@ -244,7 +245,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json(question);
     } catch (error) {
       console.error("Error creating quiz question:", error);
-      res.status(500).json({ message: "Failed to create quiz question", error: error.message });
+      res.status(500).json({ message: "Failed to create quiz question", error: error instanceof Error ? error.message : 'Unknown error' });
     }
   });
 
@@ -461,7 +462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/auth/local/login', (req, res, next) => {
     console.log('Login attempt for email:', req.body.email);
     
-    passport.authenticate('local', (err, user, info) => {
+    passport.authenticate('local', (err: any, user: any, info: any) => {
       if (err) {
         console.error('Authentication error:', err);
         return res.status(500).json({ message: 'Authentication failed' });
