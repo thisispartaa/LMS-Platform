@@ -28,9 +28,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims.sub;
-      const user = await storage.getUser(userId);
-      res.json(user);
+      // User is already set by isAuthenticated middleware
+      res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
@@ -459,14 +458,45 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Local login route
-  app.post('/api/auth/local/login', passport.authenticate('local', { 
-    successRedirect: undefined,
-    failureRedirect: undefined 
-  }), (req, res) => {
-    res.json({ 
-      user: req.user,
-      message: 'Login successful' 
-    });
+  app.post('/api/auth/local/login', (req, res, next) => {
+    console.log('Login attempt for email:', req.body.email);
+    
+    passport.authenticate('local', (err, user, info) => {
+      if (err) {
+        console.error('Authentication error:', err);
+        return res.status(500).json({ message: 'Authentication failed' });
+      }
+      
+      if (!user) {
+        console.log('Authentication failed:', info?.message || 'Invalid credentials');
+        return res.status(401).json({ message: info?.message || 'Invalid credentials' });
+      }
+
+      req.logIn(user, (err) => {
+        if (err) {
+          console.error('Login error:', err);
+          return res.status(500).json({ message: 'Login failed' });
+        }
+        
+        // Manually set session data to ensure persistence
+        req.session.user = user;
+        req.session.userId = user.id;
+        req.session.isAuthenticated = true;
+        
+        req.session.save((saveErr) => {
+          if (saveErr) {
+            console.error('Session save error:', saveErr);
+          }
+          console.log('Login successful, session saved for user:', user.email);
+          console.log('Session data:', { 
+            userId: req.session.userId, 
+            sessionId: req.sessionID,
+            isAuthenticated: req.session.isAuthenticated
+          });
+          return res.json({ user, message: 'Login successful' });
+        });
+      });
+    })(req, res, next);
   });
 
   // Local logout route  
