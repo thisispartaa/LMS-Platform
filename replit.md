@@ -135,15 +135,6 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 ## Recent Changes
 
-- June 26, 2025: Authentication System Debugging & Fixes
-  - **Fixed Replit Auth captcha issue**: Enhanced OpenID Connect setup with proper error handling
-  - **Resolved local authentication**: Set passwords for existing users (admin123 for admins, employee123 for employees)
-  - **Enhanced landing page**: Made Employee Login the default tab with demo credentials displayed
-  - **Added warning notice**: Users informed about Replit Auth issues with fallback to local auth
-  - **Improved authentication flow**: Better error handling and user feedback for both auth methods
-  - **Database updates**: All existing users now have working passwords for local authentication
-  - **User experience**: Clear demo credentials shown to facilitate easy testing and access
-
 - June 25, 2025: Authentication System Overhaul & Code Cleanup
   - Implemented dual authentication system (Replit Auth + Local Auth for invited users)
   - Fixed user ID generation to use proper unique identifiers instead of email addresses
