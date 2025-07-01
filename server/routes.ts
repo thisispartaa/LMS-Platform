@@ -431,8 +431,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         .where(eq(userModuleAssignments.userId, userId))
         .orderBy(desc(userModuleAssignments.assignedAt));
 
+      // Get quiz scores for completed modules
+      const quizResults = await storage.getUserQuizResults(userId);
+      const quizScoreMap = quizResults.reduce((map: any, result) => {
+        map[result.moduleId] = result.score;
+        return map;
+      }, {});
+
       // Transform the data to match the expected interface
-      const formattedAssignments = assignments.map(assignment => ({
+      const formattedAssignments = assignments.map((assignment: any) => ({
         id: assignment.id,
         moduleId: assignment.moduleId,
         moduleTitle: assignment.moduleTitle,
@@ -443,6 +450,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isCompleted: assignment.isCompleted,
         summary: assignment.aiSummary,
         keyTopics: assignment.keyTopics,
+        quizScore: quizScoreMap[assignment.moduleId] || null,
         document: assignment.documentId ? {
           id: assignment.documentId,
           fileName: assignment.fileName,
@@ -506,6 +514,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims?.sub || req.user.id;
       const { moduleId, answers, score, totalQuestions } = req.body;
       
+      // Create quiz result
       const quizResult = await storage.createQuizResult({
         userId,
         moduleId,
@@ -514,30 +523,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
         answers: answers || {}
       });
       
-      res.json({ score, message: "Quiz submitted successfully" });
+      // Automatically mark module as complete when quiz is submitted
+      await storage.completeAssignment(userId, moduleId);
+      
+      res.json({ score, message: "Quiz submitted and module completed successfully" });
     } catch (error) {
       console.error("Error submitting quiz:", error);
       res.status(500).json({ message: "Failed to submit quiz" });
     }
   });
 
-  // Document download endpoint
+  // Document download endpoint with module name
   app.get('/api/documents/download/:id', isAuthenticated, async (req, res) => {
     try {
       const documentId = parseInt(req.params.id);
-      const document = await storage.getDocument(documentId);
       
-      if (!document) {
+      // Get document with associated training module info
+      const result = await db
+        .select({
+          document: documents,
+          moduleTitle: trainingModules.title
+        })
+        .from(documents)
+        .leftJoin(trainingModules, eq(documents.id, trainingModules.documentId))
+        .where(eq(documents.id, documentId))
+        .limit(1);
+
+      if (result.length === 0) {
         return res.status(404).json({ message: "Document not found" });
       }
+
+      const { document, moduleTitle } = result[0];
 
       // Check if file exists
       if (!fs.existsSync(document.filePath)) {
         return res.status(404).json({ message: "File not found on disk" });
       }
 
+      // Create a meaningful filename using module title and original extension
+      const fileExtension = document.fileName.split('.').pop();
+      const downloadFileName = moduleTitle 
+        ? `${moduleTitle.replace(/[^a-zA-Z0-9\s]/g, '').trim()}.${fileExtension}`
+        : document.fileName;
+
       // Set appropriate headers for download
-      res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+      res.setHeader('Content-Disposition', `attachment; filename="${downloadFileName}"`);
       res.setHeader('Content-Type', 'application/octet-stream');
       
       // Stream the file

@@ -414,7 +414,7 @@ export class DatabaseStorage implements IStorage {
 
   // User progress analytics
   async getUserProgress(): Promise<any[]> {
-    const progress = await db
+    const progressRaw = await db
       .select({
         userId: userModuleAssignments.userId,
         userName: users.firstName,
@@ -422,15 +422,41 @@ export class DatabaseStorage implements IStorage {
         moduleTitle: trainingModules.title,
         assignedAt: userModuleAssignments.assignedAt,
         completedAt: userModuleAssignments.completedAt,
-        quizScore: quizResults.score
+        rawScore: quizResults.score,
+        totalQuestions: quizResults.totalQuestions
       })
       .from(userModuleAssignments)
       .leftJoin(users, eq(userModuleAssignments.userId, users.id))
       .leftJoin(trainingModules, eq(userModuleAssignments.moduleId, trainingModules.id))
-      .leftJoin(quizResults, eq(userModuleAssignments.userId, quizResults.userId))
+      .leftJoin(quizResults, and(
+        eq(userModuleAssignments.userId, quizResults.userId),
+        eq(userModuleAssignments.moduleId, quizResults.moduleId)
+      ))
       .orderBy(userModuleAssignments.assignedAt);
 
-    return progress;
+    console.log('Raw progress data:', progressRaw);
+    
+    // Convert to percentage scores if needed
+    const result = progressRaw.map(p => {
+      const calculatedScore = p.rawScore !== null && p.totalQuestions !== null ? 
+        (p.rawScore > 100 ? p.rawScore : Math.round((p.rawScore / p.totalQuestions) * 100)) 
+        : null;
+      
+      console.log(`Processing: module=${p.moduleTitle}, rawScore=${p.rawScore}, totalQuestions=${p.totalQuestions}, calculatedScore=${calculatedScore}`);
+      
+      return {
+        userId: p.userId,
+        userName: p.userName,
+        userEmail: p.userEmail,
+        moduleTitle: p.moduleTitle,
+        assignedAt: p.assignedAt,
+        completedAt: p.completedAt,
+        quizScore: calculatedScore
+      };
+    });
+    
+    console.log('Final result:', result);
+    return result;
   }
 }
 

@@ -32,6 +32,7 @@ interface AssignedModule {
   assignedAt: string;
   completedAt: string | null;
   isCompleted: boolean;
+  quizScore?: number | null;
   document?: {
     id: number;
     fileName: string;
@@ -160,10 +161,12 @@ export default function EmployeeDashboard() {
         selectedAnswers[q.id] === q.correctAnswer
       ).length;
       
+      const percentageScore = Math.round((correctAnswers / quizQuestions.length) * 100);
+      
       submitQuizMutation.mutate({
         moduleId: selectedModule?.moduleId,
         answers: selectedAnswers,
-        score: correctAnswers,
+        score: percentageScore,
         totalQuestions: quizQuestions.length
       });
     }
@@ -331,9 +334,14 @@ export default function EmployeeDashboard() {
                         <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
                         {module.moduleTitle}
                       </CardTitle>
-                      <p className="text-gray-600 mt-1">{module.moduleDescription}</p>
                       <div className="flex items-center space-x-2 mt-2">
                         <Badge variant="outline">{module.learningStage}</Badge>
+                        {module.quizScore !== null && module.quizScore !== undefined && (
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-800">
+                            <Trophy className="h-3 w-3 mr-1" />
+                            Quiz Score: {module.quizScore}%
+                          </Badge>
+                        )}
                         <span className="text-sm text-gray-500">
                           Completed {module.completedAt && format(new Date(module.completedAt), 'MMM d, yyyy')}
                         </span>
@@ -342,10 +350,18 @@ export default function EmployeeDashboard() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  <Button variant="outline" onClick={() => handleViewModule(module)}>
-                    <FileText className="h-4 w-4 mr-2" />
-                    Review Module
-                  </Button>
+                  <div className="flex space-x-2">
+                    <Button variant="outline" onClick={() => handleViewModule(module)}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Review Module
+                    </Button>
+                    {module.document && (
+                      <Button variant="outline" onClick={() => handleDownloadDocument(module)}>
+                        <Download className="h-4 w-4 mr-2" />
+                        Download
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             ))}
@@ -365,14 +381,9 @@ export default function EmployeeDashboard() {
           
           {selectedModule && (
             <div className="space-y-6">
-              <div>
-                <h3 className="font-semibold mb-2">Description</h3>
-                <p className="text-gray-700">{selectedModule.moduleDescription}</p>
-              </div>
-
               {selectedModule.summary && (
                 <div>
-                  <h3 className="font-semibold mb-2">Summary</h3>
+                  <h3 className="font-semibold mb-2">AI Summary</h3>
                   <p className="text-gray-700">{selectedModule.summary}</p>
                 </div>
               )}
@@ -411,22 +422,23 @@ export default function EmployeeDashboard() {
               )}
 
               <div className="flex items-center space-x-2 pt-4 border-t">
-                {!selectedModule.isCompleted && (
-                  <Button 
-                    onClick={() => markCompletedMutation.mutate(selectedModule.moduleId)}
-                    disabled={markCompletedMutation.isPending}
-                  >
-                    <CheckCircle className="h-4 w-4 mr-2" />
-                    {markCompletedMutation.isPending ? "Marking Complete..." : "Mark as Completed"}
-                  </Button>
-                )}
                 <Button 
                   variant="outline"
                   onClick={() => handleStartQuiz(selectedModule.moduleId)}
+                  disabled={selectedModule.isCompleted}
                 >
                   <Trophy className="h-4 w-4 mr-2" />
-                  Take Quiz
+                  {selectedModule.isCompleted ? "Quiz Completed" : "Take Quiz"}
                 </Button>
+                {selectedModule.document && (
+                  <Button 
+                    variant="outline"
+                    onClick={() => handleDownloadDocument(selectedModule)}
+                  >
+                    <Download className="h-4 w-4 mr-2" />
+                    Download Material
+                  </Button>
+                )}
               </div>
             </div>
           )}
