@@ -135,6 +135,16 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 ## Recent Changes
 
+- July 1, 2025: Fixed Quiz Score Calculation & Validation
+  - Resolved over 100% quiz score display issues in admin analytics
+  - Added intelligent score detection (percentage vs raw score formats)
+  - Implemented validation to cap all scores between 0-100%
+  - Fixed calculation logic to handle mixed data formats correctly
+  - Enhanced employee dashboard file downloads with meaningful module names
+  - Streamlined module viewing to show only AI summary (removed redundant description)
+  - Implemented automatic module completion when quiz is submitted
+  - Updated quiz score display with trophy badges for completed modules
+
 - June 26, 2025: Fixed Authentication System & Password Setup
   - Resolved session management issues that prevented login persistence
   - Fixed session cookie configuration (secure: false for development)

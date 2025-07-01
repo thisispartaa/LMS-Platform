@@ -434,15 +434,23 @@ export class DatabaseStorage implements IStorage {
       ))
       .orderBy(userModuleAssignments.assignedAt);
 
-    console.log('Raw progress data:', progressRaw);
-    
-    // Convert to percentage scores if needed
-    const result = progressRaw.map(p => {
-      const calculatedScore = p.rawScore !== null && p.totalQuestions !== null ? 
-        (p.rawScore > 100 ? p.rawScore : Math.round((p.rawScore / p.totalQuestions) * 100)) 
-        : null;
+    // Convert to percentage scores with proper validation
+    return progressRaw.map(p => {
+      let calculatedScore = null;
       
-      console.log(`Processing: module=${p.moduleTitle}, rawScore=${p.rawScore}, totalQuestions=${p.totalQuestions}, calculatedScore=${calculatedScore}`);
+      if (p.rawScore !== null && p.totalQuestions !== null) {
+        // Check if the score is already a percentage (score > total questions indicates percentage)
+        if (p.rawScore > p.totalQuestions) {
+          // Already a percentage, use as-is but cap at 100%
+          calculatedScore = Math.min(p.rawScore, 100);
+        } else {
+          // Raw score, convert to percentage
+          calculatedScore = Math.round((p.rawScore / p.totalQuestions) * 100);
+        }
+        
+        // Additional validation: ensure score is between 0-100
+        calculatedScore = Math.max(0, Math.min(100, calculatedScore));
+      }
       
       return {
         userId: p.userId,
@@ -454,9 +462,6 @@ export class DatabaseStorage implements IStorage {
         quizScore: calculatedScore
       };
     });
-    
-    console.log('Final result:', result);
-    return result;
   }
 }
 
