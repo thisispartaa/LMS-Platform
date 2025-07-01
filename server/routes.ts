@@ -29,7 +29,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      // User is already set by isAuthenticated middleware
+      console.log('Auth user endpoint - req.user:', JSON.stringify(req.user, null, 2));
+      
+      // For local auth, req.user should already be the database user
+      if (req.user && req.user.email && !req.user.claims && !req.user.expires_at) {
+        console.log('Returning local auth user');
+        return res.json(req.user);
+      }
+
+      // For Replit auth, we need to look up the user in the database
+      // Check if we have claims object or if claims are directly on req.user
+      let userId = null;
+      if (req.user && req.user.claims && req.user.claims.sub) {
+        userId = req.user.claims.sub;
+      }
+      
+      if (userId) {
+        console.log('Looking up Replit user with ID:', userId);
+        const user = await storage.getUser(userId);
+        console.log('Found database user:', user);
+        if (user) {
+          return res.json(user);
+        }
+        console.log('No database user found for Replit auth');
+      }
+
+      // Fallback to req.user if no database user found
+      console.log('Falling back to req.user');
       res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
