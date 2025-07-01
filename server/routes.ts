@@ -15,9 +15,12 @@ import {
   insertUserModuleAssignmentSchema,
   insertQuizResultSchema,
   insertChatMessageSchema,
-  userModuleAssignments
+  userModuleAssignments,
+  trainingModules,
+  documents
 } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
+import { db } from "./db";
 import "./types"; // Import type definitions
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -395,6 +398,166 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching user assignments:", error);
       res.status(500).json({ message: "Failed to fetch user assignments" });
+    }
+  });
+
+  // Employee Dashboard API endpoints
+  app.get('/api/user/assigned-modules', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.id;
+      console.log('Fetching assigned modules for user:', userId);
+      
+      // Get user assignments with full module and document details
+      const assignments = await db
+        .select({
+          id: userModuleAssignments.id,
+          moduleId: userModuleAssignments.moduleId,
+          assignedAt: userModuleAssignments.assignedAt,
+          completedAt: userModuleAssignments.completedAt,
+          isCompleted: userModuleAssignments.isCompleted,
+          moduleTitle: trainingModules.title,
+          moduleDescription: trainingModules.description,
+          learningStage: trainingModules.learningStage,
+          documentId: trainingModules.documentId,
+          aiSummary: documents.aiSummary,
+          keyTopics: documents.keyTopics,
+          fileName: documents.fileName,
+          fileType: documents.fileType,
+          filePath: documents.filePath
+        })
+        .from(userModuleAssignments)
+        .innerJoin(trainingModules, eq(userModuleAssignments.moduleId, trainingModules.id))
+        .leftJoin(documents, eq(trainingModules.documentId, documents.id))
+        .where(eq(userModuleAssignments.userId, userId))
+        .orderBy(desc(userModuleAssignments.assignedAt));
+
+      // Transform the data to match the expected interface
+      const formattedAssignments = assignments.map(assignment => ({
+        id: assignment.id,
+        moduleId: assignment.moduleId,
+        moduleTitle: assignment.moduleTitle,
+        moduleDescription: assignment.moduleDescription,
+        learningStage: assignment.learningStage,
+        assignedAt: assignment.assignedAt,
+        completedAt: assignment.completedAt,
+        isCompleted: assignment.isCompleted,
+        summary: assignment.aiSummary,
+        keyTopics: assignment.keyTopics,
+        document: assignment.documentId ? {
+          id: assignment.documentId,
+          fileName: assignment.fileName,
+          fileType: assignment.fileType,
+          filePath: assignment.filePath
+        } : undefined
+      }));
+
+      console.log('Formatted assignments:', formattedAssignments);
+      res.json(formattedAssignments);
+    } catch (error) {
+      console.error("Error fetching user assigned modules:", error);
+      res.status(500).json({ message: "Failed to fetch assigned modules" });
+    }
+  });
+
+  app.get('/api/user/progress-stats', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.id;
+      
+      // Get completion statistics
+      const assignments = await storage.getUserAssignments(userId);
+      const completedCount = assignments.filter(a => a.isCompleted).length;
+      const totalCount = assignments.length;
+      const completionRate = totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0;
+
+      // Get quiz statistics
+      const quizResults = await storage.getUserQuizResults(userId);
+      const averageScore = quizResults.length > 0 
+        ? Math.round(quizResults.reduce((sum, result) => sum + result.score, 0) / quizResults.length)
+        : 0;
+
+      res.json({
+        totalAssigned: totalCount,
+        completed: completedCount,
+        completionRate,
+        averageQuizScore: averageScore,
+        totalQuizzesTaken: quizResults.length
+      });
+    } catch (error) {
+      console.error("Error fetching user progress stats:", error);
+      res.status(500).json({ message: "Failed to fetch progress stats" });
+    }
+  });
+
+  app.post('/api/user/complete-module/:moduleId', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.id;
+      const moduleId = parseInt(req.params.moduleId);
+      
+      await storage.completeAssignment(userId, moduleId);
+      res.json({ message: "Module completed successfully" });
+    } catch (error) {
+      console.error("Error completing module:", error);
+      res.status(500).json({ message: "Failed to complete module" });
+    }
+  });
+
+  app.post('/api/user/submit-quiz', isAuthenticated, async (req: any, res) => {
+    try {
+      const userId = req.user.claims?.sub || req.user.id;
+      const { moduleId, answers, score, totalQuestions } = req.body;
+      
+      const quizResult = await storage.createQuizResult({
+        userId,
+        moduleId,
+        score,
+        totalQuestions,
+        answers: answers || {}
+      });
+      
+      res.json({ score, message: "Quiz submitted successfully" });
+    } catch (error) {
+      console.error("Error submitting quiz:", error);
+      res.status(500).json({ message: "Failed to submit quiz" });
+    }
+  });
+
+  // Document download endpoint
+  app.get('/api/documents/download/:id', isAuthenticated, async (req, res) => {
+    try {
+      const documentId = parseInt(req.params.id);
+      const document = await storage.getDocument(documentId);
+      
+      if (!document) {
+        return res.status(404).json({ message: "Document not found" });
+      }
+
+      // Check if file exists
+      if (!fs.existsSync(document.filePath)) {
+        return res.status(404).json({ message: "File not found on disk" });
+      }
+
+      // Set appropriate headers for download
+      res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
+      res.setHeader('Content-Type', 'application/octet-stream');
+      
+      // Stream the file
+      const fileStream = fs.createReadStream(document.filePath);
+      fileStream.pipe(res);
+    } catch (error) {
+      console.error("Error downloading document:", error);
+      res.status(500).json({ message: "Failed to download document" });
+    }
+  });
+
+  // Get quiz questions for a module
+  app.get('/api/modules/:moduleId/quiz-questions', isAuthenticated, async (req, res) => {
+    try {
+      const moduleId = parseInt(req.params.moduleId);
+      const questions = await storage.getQuizQuestionsByModule(moduleId);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching quiz questions:", error);
+      res.status(500).json({ message: "Failed to fetch quiz questions" });
     }
   });
 
