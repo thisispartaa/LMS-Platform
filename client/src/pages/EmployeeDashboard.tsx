@@ -12,6 +12,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { 
   BookOpen, 
   CheckCircle, 
+  X,
   Clock, 
   Download, 
   Play, 
@@ -63,6 +64,8 @@ export default function EmployeeDashboard() {
   const [showExplanation, setShowExplanation] = useState(false);
   const [quizCompleted, setQuizCompleted] = useState(false);
   const [score, setScore] = useState(0);
+  const [showQuizReview, setShowQuizReview] = useState(false);
+  const [isSubmittingQuiz, setIsSubmittingQuiz] = useState(false);
   const { toast } = useToast();
 
   // Fetch user's assigned modules
@@ -101,6 +104,7 @@ export default function EmployeeDashboard() {
 
   const submitQuizMutation = useMutation({
     mutationFn: async (quizData: any) => {
+      setIsSubmittingQuiz(true);
       const response = await fetch('/api/user/submit-quiz', {
         method: 'POST',
         body: JSON.stringify(quizData),
@@ -112,8 +116,21 @@ export default function EmployeeDashboard() {
     onSuccess: (data) => {
       setScore(data.score);
       setQuizCompleted(true);
+      setIsSubmittingQuiz(false);
+      toast({
+        title: "Quiz Completed!",
+        description: `Congratulations! You scored ${data.score}%`
+      });
       queryClient.invalidateQueries({ queryKey: ["/api/user/assigned-modules"] });
       queryClient.invalidateQueries({ queryKey: ["/api/user/progress-stats"] });
+    },
+    onError: (error) => {
+      setIsSubmittingQuiz(false);
+      toast({
+        title: "Error",
+        description: "Failed to submit quiz. Please try again.",
+        variant: "destructive"
+      });
     }
   });
 
@@ -152,11 +169,23 @@ export default function EmployeeDashboard() {
   };
 
   const handleNextQuestion = () => {
+    if (isSubmittingQuiz) return; // Prevent multiple submissions
+    
     if (currentQuestionIndex < quizQuestions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
       setShowExplanation(false);
     } else {
-      // Submit quiz
+      // Submit quiz - only allow if all questions are answered
+      const unansweredQuestions = quizQuestions.filter(q => !selectedAnswers[q.id]);
+      if (unansweredQuestions.length > 0) {
+        toast({
+          title: "Please answer all questions",
+          description: "You must answer all questions before submitting the quiz.",
+          variant: "destructive"
+        });
+        return;
+      }
+
       const correctAnswers = quizQuestions.filter(q => 
         selectedAnswers[q.id] === q.correctAnswer
       ).length;
@@ -178,6 +207,38 @@ export default function EmployeeDashboard() {
       link.href = `/api/documents/download/${module.document.id}`;
       link.download = module.document.fileName;
       link.click();
+    }
+  };
+
+  const handleReviewQuiz = async (module: AssignedModule) => {
+    try {
+      // Fetch quiz questions
+      const questionsResponse = await fetch(`/api/quiz-questions/${module.moduleId}`);
+      const questions = await questionsResponse.json();
+      
+      // Fetch quiz results 
+      const resultResponse = await fetch(`/api/user/quiz-result/${module.moduleId}`);
+      const result = await resultResponse.json();
+      
+      if (questions.length > 0 && result) {
+        setQuizQuestions(questions);
+        setSelectedAnswers(result.answers || {});
+        setScore(result.score);
+        setSelectedModule(module);
+        setShowQuizReview(true);
+      } else {
+        toast({
+          title: "No quiz available",
+          description: "This module doesn't have a quiz or you haven't taken it yet.",
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load quiz review",
+        variant: "destructive"
+      });
     }
   };
 
@@ -355,6 +416,12 @@ export default function EmployeeDashboard() {
                       <FileText className="h-4 w-4 mr-2" />
                       Review Module
                     </Button>
+                    {module.quizScore && (
+                      <Button variant="outline" onClick={() => handleReviewQuiz(module)}>
+                        <Trophy className="h-4 w-4 mr-2" />
+                        Review Quiz
+                      </Button>
+                    )}
                     {module.document && (
                       <Button variant="outline" onClick={() => handleDownloadDocument(module)}>
                         <Download className="h-4 w-4 mr-2" />
@@ -455,15 +522,29 @@ export default function EmployeeDashboard() {
           </DialogHeader>
 
           {quizCompleted ? (
-            <div className="text-center space-y-4">
+            <div className="text-center space-y-6">
               <Trophy className="h-16 w-16 text-yellow-500 mx-auto" />
               <h3 className="text-2xl font-bold">Quiz Completed!</h3>
-              <p className="text-lg">
-                You scored {score} out of {quizQuestions.length} ({Math.round((score / quizQuestions.length) * 100)}%)
-              </p>
-              <Button onClick={() => setShowQuizDialog(false)}>
-                Close Quiz
-              </Button>
+              <div className="space-y-2">
+                <p className="text-xl font-semibold text-green-600">{score}%</p>
+                <p className="text-gray-600">
+                  You answered {Math.round((score / 100) * quizQuestions.length)} out of {quizQuestions.length} questions correctly
+                </p>
+              </div>
+              <div className="flex space-x-3">
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowQuizReview(true)}
+                >
+                  Review Answers
+                </Button>
+                <Button onClick={() => {
+                  setShowQuizDialog(false);
+                  setShowQuizReview(false);
+                }}>
+                  Close Quiz
+                </Button>
+              </div>
             </div>
           ) : quizQuestions.length > 0 && (
             <div className="space-y-4">
@@ -530,13 +611,138 @@ export default function EmployeeDashboard() {
                 )}
 
                 {showExplanation && (
-                  <Button onClick={handleNextQuestion} className="w-full">
-                    {currentQuestionIndex < quizQuestions.length - 1 ? "Next Question" : "Finish Quiz"}
+                  <Button 
+                    onClick={handleNextQuestion} 
+                    className="w-full"
+                    disabled={isSubmittingQuiz}
+                  >
+                    {isSubmittingQuiz ? "Submitting..." : currentQuestionIndex < quizQuestions.length - 1 ? "Next Question" : "Finish Quiz"}
                   </Button>
                 )}
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Quiz Review Dialog */}
+      <Dialog open={showQuizReview} onOpenChange={setShowQuizReview}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Quiz Review - {selectedModule?.moduleTitle}</DialogTitle>
+            <p className="text-gray-600">Review your answers and explanations</p>
+          </DialogHeader>
+          
+          <div className="space-y-6">
+            {quizQuestions.map((question, index) => {
+              const userAnswer = selectedAnswers[question.id];
+              const isCorrect = userAnswer === question.correctAnswer;
+              
+              return (
+                <div key={question.id} className="border rounded-lg p-4 space-y-3">
+                  <div className="flex items-start justify-between">
+                    <h4 className="font-semibold text-lg">
+                      Question {index + 1}: {question.questionText}
+                    </h4>
+                    {isCorrect ? (
+                      <div className="text-green-600 flex items-center">
+                        <CheckCircle className="h-5 w-5 mr-1" />
+                        Correct
+                      </div>
+                    ) : (
+                      <div className="text-red-600 flex items-center">
+                        <X className="h-5 w-5 mr-1" />
+                        Incorrect
+                      </div>
+                    )}
+                  </div>
+                  
+                  {question.questionType === "multiple_choice" && question.options && (
+                    <div className="space-y-2">
+                      {question.options.map((option, optionIndex) => {
+                        const isUserAnswer = userAnswer === option;
+                        const isCorrectAnswer = question.correctAnswer === option;
+                        
+                        return (
+                          <div
+                            key={optionIndex}
+                            className={`p-3 rounded border ${
+                              isCorrectAnswer
+                                ? "bg-green-50 border-green-200"
+                                : isUserAnswer && !isCorrect
+                                ? "bg-red-50 border-red-200"
+                                : "bg-gray-50 border-gray-200"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span className="font-medium">
+                                {String.fromCharCode(65 + optionIndex)}.
+                              </span>
+                              <span>{option}</span>
+                              {isUserAnswer && (
+                                <span className="text-blue-600 text-sm">(Your answer)</span>
+                              )}
+                              {isCorrectAnswer && (
+                                <span className="text-green-600 text-sm">(Correct answer)</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {question.questionType === "true_false" && (
+                    <div className="space-y-2">
+                      {["True", "False"].map((option) => {
+                        const isUserAnswer = userAnswer === option;
+                        const isCorrectAnswer = question.correctAnswer === option;
+                        
+                        return (
+                          <div
+                            key={option}
+                            className={`p-3 rounded border ${
+                              isCorrectAnswer
+                                ? "bg-green-50 border-green-200"
+                                : isUserAnswer && !isCorrect
+                                ? "bg-red-50 border-red-200"
+                                : "bg-gray-50 border-gray-200"
+                            }`}
+                          >
+                            <div className="flex items-center space-x-2">
+                              <span>{option}</span>
+                              {isUserAnswer && (
+                                <span className="text-blue-600 text-sm">(Your answer)</span>
+                              )}
+                              {isCorrectAnswer && (
+                                <span className="text-green-600 text-sm">(Correct answer)</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  
+                  {question.explanation && (
+                    <div className="bg-blue-50 border border-blue-200 p-3 rounded">
+                      <p className="text-blue-800 font-medium">Explanation:</p>
+                      <p className="text-blue-700">{question.explanation}</p>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+          
+          <div className="flex justify-between items-center pt-4 border-t">
+            <div className="text-sm text-gray-600">
+              Score: {score}% ({Math.round((score / 100) * quizQuestions.length)}/{quizQuestions.length} correct)
+            </div>
+            <Button onClick={() => setShowQuizReview(false)}>
+              Close Review
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
