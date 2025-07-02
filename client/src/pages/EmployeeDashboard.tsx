@@ -226,6 +226,19 @@ export default function EmployeeDashboard() {
       const result = await resultResponse.json();
       
       if (questions.length > 0 && result) {
+        // Validate that we have answers for the current questions
+        const hasValidAnswers = (questions as QuizQuestion[]).some(q => result.answers && result.answers[q.id]);
+        
+        if (!hasValidAnswers) {
+          console.warn('Quiz result answers do not match current question IDs for module', module.moduleId);
+          toast({
+            title: "Quiz review unavailable",
+            description: "This quiz was taken with a different set of questions and cannot be reviewed.",
+            variant: "destructive"
+          });
+          return;
+        }
+        
         setQuizQuestions(questions);
         setSelectedAnswers(result.answers || {});
         setScore(result.score);
@@ -742,7 +755,26 @@ export default function EmployeeDashboard() {
           
           <div className="flex justify-between items-center pt-4 border-t">
             <div className="text-sm text-gray-600">
-              Score: {score}% ({Math.round((score / 100) * quizQuestions.length)}/{quizQuestions.length} correct)
+              {(() => {
+                // Calculate actual score based on current answers and questions
+                const correctCount = quizQuestions.filter(q => 
+                  selectedAnswers[q.id] === q.correctAnswer
+                ).length;
+                const actualPercentage = Math.round((correctCount / quizQuestions.length) * 100);
+                
+                // Display both stored score and calculated score if they differ
+                if (Math.abs(score - actualPercentage) > 2) {
+                  return (
+                    <div>
+                      <div>Stored Score: {score}%</div>
+                      <div>Current Calculation: {actualPercentage}% ({correctCount}/{quizQuestions.length} correct)</div>
+                      <div className="text-xs text-amber-600">* Score difference may be due to updated questions</div>
+                    </div>
+                  );
+                } else {
+                  return `Score: ${score}% (${correctCount}/${quizQuestions.length} correct)`;
+                }
+              })()}
             </div>
             <Button onClick={() => setShowQuizReview(false)}>
               Close Review

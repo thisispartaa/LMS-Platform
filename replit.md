@@ -135,6 +135,17 @@ This is a comprehensive employee training platform built with a modern full-stac
 
 ## Recent Changes
 
+- July 2, 2025: Enhanced Quiz System Reliability & Review Features
+  - Fixed quiz score display inconsistencies in employee dashboard completed modules
+  - Enhanced quiz review functionality with proper incorrect answer highlighting (red background)
+  - Added validation for quiz review compatibility to handle legacy quiz data gracefully
+  - Improved score calculation display with dual scoring for mismatched historical data
+  - Prevented multiple quiz submissions with proper state management and loading states
+  - Cleaned up duplicate quiz result database entries causing calculation errors
+  - Updated getUserQuizResults to return only most recent result per module
+  - Added comprehensive debugging for quiz submission issues
+  - Fixed moduleId validation in quiz submission endpoint
+
 - July 1, 2025: Fixed Quiz Score Calculation & Validation
   - Resolved over 100% quiz score display issues in admin analytics
   - Added intelligent score detection (percentage vs raw score formats)
