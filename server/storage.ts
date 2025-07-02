@@ -307,11 +307,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserQuizResults(userId: string): Promise<QuizResult[]> {
-    return await db
+    // Get only the most recent quiz result per module for this user
+    const results = await db
       .select()
       .from(quizResults)
       .where(eq(quizResults.userId, userId))
       .orderBy(desc(quizResults.completedAt));
+    
+    // Filter to get only the most recent result per module
+    const latestResults = new Map<number, QuizResult>();
+    results.forEach(result => {
+      if (!latestResults.has(result.moduleId)) {
+        latestResults.set(result.moduleId, result);
+      } else {
+        const existing = latestResults.get(result.moduleId)!;
+        // Since results are ordered by completedAt DESC, the first one is the most recent
+        // So we only set if this is the first occurrence
+      }
+    });
+    
+    return Array.from(latestResults.values());
   }
 
   async getModuleQuizResults(moduleId: number): Promise<QuizResult[]> {

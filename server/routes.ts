@@ -534,36 +534,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const userId = req.user.claims?.sub || req.user.id;
       const { moduleId, answers, score, totalQuestions } = req.body;
       
+      console.log('Quiz submission debug:', {
+        userId,
+        moduleId,
+        moduleIdType: typeof moduleId,
+        score,
+        totalQuestions,
+        answersCount: Object.keys(answers || {}).length
+      });
+      
+      // Validate required fields
+      if (!moduleId || !userId) {
+        return res.status(400).json({ message: "Missing required fields: moduleId or userId" });
+      }
+      
+      // Ensure moduleId is a number
+      const parsedModuleId = parseInt(moduleId);
+      if (isNaN(parsedModuleId)) {
+        return res.status(400).json({ message: "Invalid moduleId format" });
+      }
+      
       // Check if quiz result already exists for this user and module
       const existingResults = await storage.getUserQuizResults(userId);
-      const existingResult = existingResults.find(result => result.moduleId === moduleId);
+      const existingResult = existingResults.find(result => result.moduleId === parsedModuleId);
       
       let quizResult;
       if (existingResult) {
-        // Update existing quiz result instead of creating a new one
-        console.log(`Updating existing quiz result for user ${userId}, module ${moduleId}`);
-        // For now, we'll create a new result but in production you'd want to update
-        // This prevents the score multiplication issue
-        quizResult = await storage.createQuizResult({
-          userId,
-          moduleId,
-          score,
-          totalQuestions,
-          answers: answers || {}
-        });
-      } else {
-        // Create new quiz result
-        quizResult = await storage.createQuizResult({
-          userId,
-          moduleId,
-          score,
-          totalQuestions,
-          answers: answers || {}
-        });
+        console.log(`User already has quiz result for module ${parsedModuleId}, creating new attempt`);
       }
       
+      // Create quiz result
+      quizResult = await storage.createQuizResult({
+        userId,
+        moduleId: parsedModuleId,
+        score,
+        totalQuestions,
+        answers: answers || {}
+      });
+      
       // Automatically mark module as complete when quiz is submitted
-      await storage.completeAssignment(userId, moduleId);
+      await storage.completeAssignment(userId, parsedModuleId);
       
       res.json({ score, message: "Quiz submitted and module completed successfully" });
     } catch (error) {

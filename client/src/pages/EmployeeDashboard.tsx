@@ -143,7 +143,12 @@ export default function EmployeeDashboard() {
     try {
       const response = await fetch(`/api/quiz-questions/${moduleId}`);
       const questions = await response.json();
+      
+      // Find the module from assigned modules to set selectedModule
+      const module = (assignedModules as AssignedModule[]).find(m => m.moduleId === moduleId);
+      
       setQuizQuestions(questions);
+      setSelectedModule(module || null);
       setCurrentQuestionIndex(0);
       setSelectedAnswers({});
       setShowExplanation(false);
