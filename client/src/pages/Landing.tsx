@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { GraduationCap, UserPlus, LogIn } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -13,30 +12,17 @@ export default function Landing() {
   const [isSignupMode, setIsSignupMode] = useState(false);
   
   // Login form state
-  const [localEmail, setLocalEmail] = useState("");
-  const [localPassword, setLocalPassword] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   
   // Signup form state
-  const [signupEmail, setSignupEmail] = useState("");
-  const [signupPassword, setSignupPassword] = useState("");
-  const [signupFirstName, setSignupFirstName] = useState("");
-  const [signupLastName, setSignupLastName] = useState("");
-  const [signupRole, setSignupRole] = useState("");
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [role, setRole] = useState("");
   
   const { toast } = useToast();
 
-  const handleSignIn = async () => {
-    setIsLoading(true);
-    try {
-      window.location.href = '/api/login';
-    } catch (error) {
-      console.error('Sign in error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleLocalLogin = async (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
@@ -47,8 +33,8 @@ export default function Landing() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: localEmail,
-          password: localPassword
+          email,
+          password
         }),
         credentials: 'include'
       });
@@ -64,7 +50,7 @@ export default function Landing() {
         });
       }
     } catch (error) {
-      console.error('Local login error:', error);
+      console.error('Login error:', error);
       toast({
         title: "Login Failed", 
         description: "An error occurred during login",
@@ -86,11 +72,11 @@ export default function Landing() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email: signupEmail,
-          password: signupPassword,
-          firstName: signupFirstName,
-          lastName: signupLastName,
-          role: signupRole
+          email,
+          password,
+          firstName,
+          lastName,
+          role
         }),
         credentials: 'include'
       });
@@ -103,13 +89,10 @@ export default function Landing() {
         });
         // Switch to login mode and clear signup form
         setIsSignupMode(false);
-        setSignupEmail("");
-        setSignupPassword("");
-        setSignupFirstName("");
-        setSignupLastName("");
-        setSignupRole("");
-        // Pre-fill login email
-        setLocalEmail(signupEmail);
+        setFirstName("");
+        setLastName("");
+        setRole("");
+        // Keep email and password for convenience
       } else {
         const error = await response.json();
         toast({
@@ -148,152 +131,135 @@ export default function Landing() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="local" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="local">Local Account</TabsTrigger>
-              <TabsTrigger value="replit">Replit Auth</TabsTrigger>
-            </TabsList>
-            
-            <TabsContent value="local" className="space-y-4">
-              {!isSignupMode ? (
-                <form onSubmit={handleLocalLogin} className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email">Email</Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={localEmail}
-                      onChange={(e) => setLocalEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">Password</Label>
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      value={localPassword}
-                      onChange={(e) => setLocalPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <Button 
-                    type="submit"
-                    disabled={isLoading}
-                    className="w-full"
-                    size="lg"
-                  >
-                    <LogIn className="mr-2 h-4 w-4" />
-                    {isLoading ? "Signing in..." : "Sign In"}
-                  </Button>
-                  <div className="text-center">
-                    <Button
-                      type="button"
-                      variant="link"
-                      onClick={() => setIsSignupMode(true)}
-                      className="text-sm"
-                    >
-                      Don't have an account? Sign up
-                    </Button>
-                  </div>
-                </form>
-              ) : (
-                <form onSubmit={handleSignup} className="space-y-4">
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="firstName">First Name</Label>
-                      <Input
-                        id="firstName"
-                        type="text"
-                        placeholder="First name"
-                        value={signupFirstName}
-                        onChange={(e) => setSignupFirstName(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="lastName">Last Name</Label>
-                      <Input
-                        id="lastName"
-                        type="text"
-                        placeholder="Last name"
-                        value={signupLastName}
-                        onChange={(e) => setSignupLastName(e.target.value)}
-                        required
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signupEmail">Email</Label>
-                    <Input
-                      id="signupEmail"
-                      type="email"
-                      placeholder="Enter your email"
-                      value={signupEmail}
-                      onChange={(e) => setSignupEmail(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="signupPassword">Password</Label>
-                    <Input
-                      id="signupPassword"
-                      type="password"
-                      placeholder="Create a password"
-                      value={signupPassword}
-                      onChange={(e) => setSignupPassword(e.target.value)}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="role">Account Type</Label>
-                    <Select value={signupRole} onValueChange={setSignupRole} required>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select your role" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="employee">Employee</SelectItem>
-                        <SelectItem value="trainer">Trainer</SelectItem>
-                        <SelectItem value="admin">Administrator</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <Button 
-                    type="submit"
-                    disabled={isLoading || !signupRole}
-                    className="w-full"
-                    size="lg"
-                  >
-                    <UserPlus className="mr-2 h-4 w-4" />
-                    {isLoading ? "Creating account..." : "Create Account"}
-                  </Button>
-                  <div className="text-center">
-                    <Button
-                      type="button"
-                      variant="link"
-                      onClick={() => setIsSignupMode(false)}
-                      className="text-sm"
-                    >
-                      Already have an account? Sign in
-                    </Button>
-                  </div>
-                </form>
-              )}
-            </TabsContent>
-            
-            <TabsContent value="replit" className="space-y-4">
+          {!isSignupMode ? (
+            // Login Form
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                />
+              </div>
               <Button 
-                onClick={handleSignIn}
+                type="submit"
                 disabled={isLoading}
                 className="w-full"
                 size="lg"
               >
-                {isLoading ? "Signing in..." : "Sign in with Replit"}
+                <LogIn className="mr-2 h-4 w-4" />
+                {isLoading ? "Signing in..." : "Sign In"}
               </Button>
-            </TabsContent>
-          </Tabs>
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => setIsSignupMode(true)}
+                  className="text-sm"
+                >
+                  Don't have an account? Sign up
+                </Button>
+              </div>
+            </form>
+          ) : (
+            // Signup Form
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-2">
+                  <Label htmlFor="firstName">First Name</Label>
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="First name"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="lastName">Last Name</Label>
+                  <Input
+                    id="lastName"
+                    type="text"
+                    placeholder="Last name"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signupEmail">Email</Label>
+                <Input
+                  id="signupEmail"
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="signupPassword">Password</Label>
+                <Input
+                  id="signupPassword"
+                  type="password"
+                  placeholder="Create a password (min 8 characters)"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  required
+                  minLength={8}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="role">Account Type</Label>
+                <Select value={role} onValueChange={setRole} required>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select your role" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="employee">Employee - Access training assignments</SelectItem>
+                    <SelectItem value="trainer">Trainer - Manage training content</SelectItem>
+                    <SelectItem value="admin">Administrator - Full system access</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button 
+                type="submit"
+                disabled={isLoading || !role}
+                className="w-full"
+                size="lg"
+              >
+                <UserPlus className="mr-2 h-4 w-4" />
+                {isLoading ? "Creating account..." : "Create Account"}
+              </Button>
+              <div className="text-center">
+                <Button
+                  type="button"
+                  variant="link"
+                  onClick={() => setIsSignupMode(false)}
+                  className="text-sm"
+                >
+                  Already have an account? Sign in
+                </Button>
+              </div>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

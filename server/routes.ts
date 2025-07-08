@@ -3,9 +3,9 @@ import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
 import passport from "passport";
+import session from "express-session";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { setupLocalAuth } from "./auth";
+import { setupLocalAuth, isAuthenticated } from "./auth";
 import { upload, getFileType, processUploadedFile } from "./services/fileProcessor";
 import { generateQuizQuestions, getChatbotResponse, suggestReviewModules } from "./services/openai";
 import { 
@@ -27,10 +27,24 @@ import { z } from "zod";
 import "./types"; // Import type definitions
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    }
+  }));
+
+  // Setup passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+
   // Setup local authentication
   setupLocalAuth();
-  // Auth middleware
-  await setupAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {

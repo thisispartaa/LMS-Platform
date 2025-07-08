@@ -2,6 +2,7 @@ import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import { storage } from './storage.js';
 import { PasswordUtils } from './utils/password.js';
+import type { Request, Response, NextFunction } from 'express';
 
 // Configure local authentication strategy
 export function setupLocalAuth() {
@@ -60,4 +61,18 @@ export function setupLocalAuth() {
       done(error);
     }
   });
+}
+
+// Simple authentication middleware
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  
+  // Also check for local session
+  if (req.session && (req.session as any).isAuthenticated && (req.session as any).userId) {
+    return next();
+  }
+  
+  return res.status(401).json({ message: "Unauthorized" });
 }
