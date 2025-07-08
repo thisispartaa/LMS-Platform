@@ -38,7 +38,7 @@ export const upload = multer({
     if (allowedTypes.includes(file.mimetype)) {
       cb(null, true);
     } else {
-      cb(new Error("Unsupported file type"), false);
+      cb(null, false);
     }
   },
   limits: {
@@ -144,6 +144,16 @@ export async function processUploadedFile(
     suggestedTitle: string;
   };
 }> {
+  let result: {
+    content: string;
+    analysis: {
+      summary: string;
+      keyTopics: string[];
+      learningStage: "onboarding" | "foundational" | "intermediate" | "advanced";
+      suggestedTitle: string;
+    };
+  };
+
   try {
     // Extract text content from the file
     const content = await extractTextContent(filePath, fileType);
@@ -151,14 +161,19 @@ export async function processUploadedFile(
     // Analyze the content using OpenAI
     const analysis = await analyzeDocument(content, originalName);
     
-    return {
+    result = {
       content,
       analysis,
     };
   } catch (error) {
     console.error("Error processing uploaded file:", error);
     throw new Error("Failed to process uploaded file");
+  } finally {
+    // Always cleanup the temporary file
+    await cleanupFile(filePath);
   }
+
+  return result;
 }
 
 // Clean up temporary files

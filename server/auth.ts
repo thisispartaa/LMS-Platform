@@ -1,6 +1,8 @@
 import passport from 'passport';
 import { Strategy as LocalStrategy } from 'passport-local';
 import { storage } from './storage.js';
+import { PasswordUtils } from './utils/password.js';
+import type { Request, Response, NextFunction } from 'express';
 
 // Configure local authentication strategy
 export function setupLocalAuth() {
@@ -11,29 +13,29 @@ export function setupLocalAuth() {
     },
     async (email: string, password: string, done) => {
       try {
-        console.log('Login attempt for email:', email);
-        
         // Find user by email
         const users = await storage.getAllUsers();
-        console.log('All users:', users.map(u => ({ email: u.email, id: u.id, hasPassword: !!u.password })));
-        
         const user = users.find(u => u.email === email);
-        console.log('Found user:', user ? { email: user.email, id: user.id, hasPassword: !!user.password } : 'not found');
         
         if (!user) {
-          console.log('User not found');
           return done(null, false, { message: 'Invalid email or password' });
         }
 
-        // Check password (in production, use proper password hashing)
-        console.log('Password check:', { provided: password, stored: user.password, match: user.password === password });
-        if (user.password !== password) {
-          console.log('Password mismatch');
+        // Check if user has a password set
+        if (!user.password) {
+          return done(null, false, { message: 'Account not properly configured. Please contact support.' });
+        }
+
+        // Compare password using bcrypt
+        const isPasswordValid = await PasswordUtils.comparePassword(password, user.password);
+        
+        if (!isPasswordValid) {
           return done(null, false, { message: 'Invalid email or password' });
         }
 
-        console.log('Login successful for user:', user.email);
-        return done(null, user);
+        // Remove password from user object before returning
+        const { password: _, ...userWithoutPassword } = user;
+        return done(null, userWithoutPassword);
       } catch (error) {
         console.error('Login error:', error);
         return done(error);
@@ -48,9 +50,29 @@ export function setupLocalAuth() {
   passport.deserializeUser(async (id: string, done) => {
     try {
       const user = await storage.getUser(id);
-      done(null, user);
+      if (user) {
+        // Remove password from user object
+        const { password: _, ...userWithoutPassword } = user;
+        done(null, userWithoutPassword);
+      } else {
+        done(null, false);
+      }
     } catch (error) {
       done(error);
     }
   });
+}
+
+// Simple authentication middleware
+export function isAuthenticated(req: Request, res: Response, next: NextFunction) {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  
+  // Also check for local session
+  if (req.session && (req.session as any).isAuthenticated && (req.session as any).userId) {
+    return next();
+  }
+  
+  return res.status(401).json({ message: "Unauthorized" });
 }

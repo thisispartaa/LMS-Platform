@@ -26,6 +26,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, desc, and, count, avg, getTableColumns } from "drizzle-orm";
+import { PasswordUtils } from "./utils/password.js";
 
 export interface IStorage {
   // User operations (mandatory for Replit Auth)
@@ -118,7 +119,11 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createUser(userData: any): Promise<User> {
-    console.log('Creating user with data:', userData);
+    // Hash password if provided
+    let hashedPassword = userData.password;
+    if (userData.password) {
+      hashedPassword = await PasswordUtils.hashPassword(userData.password);
+    }
     
     const [created] = await db
       .insert(users)
@@ -129,15 +134,19 @@ export class DatabaseStorage implements IStorage {
         lastName: userData.lastName,
         role: userData.role,
         profileImageUrl: null,
-        password: userData.password
+        password: hashedPassword
       } as any)
       .returning();
       
-    console.log('Created user:', created);
     return created;
   }
 
   async updateUser(id: string, updates: any): Promise<User> {
+    // Hash password if being updated
+    if (updates.password) {
+      updates.password = await PasswordUtils.hashPassword(updates.password);
+    }
+    
     const [updated] = await db
       .update(users)
       .set(updates)
@@ -270,14 +279,12 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUserAssignments(userId: string): Promise<UserModuleAssignment[]> {
-    console.log('getUserAssignments called with userId:', userId, typeof userId);
     const result = await db
       .select()
       .from(userModuleAssignments)
       .where(eq(userModuleAssignments.userId, userId))
       .orderBy(desc(userModuleAssignments.assignedAt));
     
-    console.log('getUserAssignments result:', result);
     return result;
   }
 

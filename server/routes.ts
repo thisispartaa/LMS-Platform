@@ -3,9 +3,9 @@ import { createServer, type Server } from "http";
 import path from "path";
 import fs from "fs";
 import passport from "passport";
+import session from "express-session";
 import { storage } from "./storage";
-import { setupAuth, isAuthenticated } from "./replitAuth";
-import { setupLocalAuth } from "./auth";
+import { setupLocalAuth, isAuthenticated } from "./auth";
 import { upload, getFileType, processUploadedFile } from "./services/fileProcessor";
 import { generateQuizQuestions, getChatbotResponse, suggestReviewModules } from "./services/openai";
 import { 
@@ -21,44 +21,52 @@ import {
 } from "@shared/schema";
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
+import { getUserId, getUserIdSafe } from "./utils/auth";
+import { validateBody, userInvitationSchema } from "./utils/validation";
+import { z } from "zod";
 import "./types"; // Import type definitions
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Setup session middleware
+  app.use(session({
+    secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+      httpOnly: true,
+      secure: false, // Set to true in production with HTTPS
+      maxAge: 7 * 24 * 60 * 60 * 1000 // 7 days
+    }
+  }));
+
+  // Setup passport
+  app.use(passport.initialize());
+  app.use(passport.session());
+
   // Setup local authentication
   setupLocalAuth();
-  // Auth middleware
-  await setupAuth(app);
 
   // Auth routes
   app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      console.log('Auth user endpoint - req.user:', JSON.stringify(req.user, null, 2));
-      
       // For local auth, req.user should already be the database user
       if (req.user && req.user.email && !req.user.claims && !req.user.expires_at) {
-        console.log('Returning local auth user');
         return res.json(req.user);
       }
 
       // For Replit auth, we need to look up the user in the database
-      // Check if we have claims object or if claims are directly on req.user
-      let userId = null;
-      if (req.user && req.user.claims && req.user.claims.sub) {
-        userId = req.user.claims.sub;
-      }
+      const userId = getUserIdSafe(req);
       
       if (userId) {
-        console.log('Looking up Replit user with ID:', userId);
         const user = await storage.getUser(userId);
-        console.log('Found database user:', user);
         if (user) {
-          return res.json(user);
+          // Remove password from response
+          const { password: _, ...userWithoutPassword } = user;
+          return res.json(userWithoutPassword);
         }
-        console.log('No database user found for Replit auth');
       }
 
       // Fallback to req.user if no database user found
-      console.log('Falling back to req.user');
       res.json(req.user);
     } catch (error) {
       console.error("Error fetching user:", error);
@@ -84,7 +92,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "No file uploaded" });
       }
 
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       const fileType = getFileType(req.file.mimetype);
       
       // Process the uploaded file
@@ -119,7 +127,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create training module from uploaded content
   app.post('/api/create-training-module', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       const { moduleData, fileInfo, quizQuestions } = req.body;
 
       // Save document to database
@@ -197,7 +205,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/training-modules', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       const moduleData = insertTrainingModuleSchema.parse({
         ...req.body,
         createdBy: userId,
@@ -341,8 +349,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
       const defaultPassword = `temp${Math.random().toString(36).substring(7)}`;
       
-      console.log('Creating user with unique ID:', uniqueId);
-      
       const newUser = await storage.createUser({
         id: uniqueId,
         email,
@@ -396,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Assignment routes
   app.post('/api/assignments', isAuthenticated, async (req: any, res) => {
     try {
-      const assignerId = req.user.claims.sub;
+      const assignerId = getUserId(req);
       const assignmentData = insertUserModuleAssignmentSchema.parse({
         ...req.body,
         assignedBy: assignerId,
@@ -424,8 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Employee Dashboard API endpoints
   app.get('/api/user/assigned-modules', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
-      console.log('Fetching assigned modules for user:', userId);
+      const userId = getUserId(req);
       
       // Get user assignments with full module and document details
       const assignments = await db
@@ -479,7 +484,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
         } : undefined
       }));
 
-      console.log('Formatted assignments:', formattedAssignments);
       res.json(formattedAssignments);
     } catch (error) {
       console.error("Error fetching user assigned modules:", error);
@@ -489,7 +493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get('/api/user/progress-stats', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       
       // Get completion statistics
       const assignments = await storage.getUserAssignments(userId);
@@ -518,7 +522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/user/complete-module/:moduleId', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       const moduleId = parseInt(req.params.moduleId);
       
       await storage.completeAssignment(userId, moduleId);
@@ -531,17 +535,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post('/api/user/submit-quiz', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       const { moduleId, answers, score, totalQuestions } = req.body;
-      
-      console.log('Quiz submission debug:', {
-        userId,
-        moduleId,
-        moduleIdType: typeof moduleId,
-        score,
-        totalQuestions,
-        answersCount: Object.keys(answers || {}).length
-      });
       
       // Validate required fields
       if (!moduleId || !userId) {
@@ -560,7 +555,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       let quizResult;
       if (existingResult) {
-        console.log(`User already has quiz result for module ${parsedModuleId}, creating new attempt`);
+        // User already has quiz result for this module, creating new attempt
       }
       
       // Create quiz result
@@ -644,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleChatRequest = async (req: any, res: any) => {
     try {
       const { message } = req.body;
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       
       if (!message || !message.trim()) {
         return res.status(400).json({ message: "Message is required" });
@@ -679,7 +674,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Chat history route
   app.get('/api/chat/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       const history = await storage.getUserChatHistory(userId, 50);
       res.json(history);
     } catch (error) {
@@ -691,7 +686,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Clear chat history route (called on page refresh)
   app.delete('/api/chat/history', isAuthenticated, async (req: any, res) => {
     try {
-      const userId = req.user.claims?.sub || req.user.id;
+      const userId = getUserId(req);
       await storage.clearUserChatHistory(userId);
       res.json({ message: "Chat history cleared" });
     } catch (error) {
@@ -726,10 +721,60 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Local signup route
+  app.post('/api/auth/local/signup', async (req, res) => {
+    try {
+      // Validate request body
+      const signupData = validateBody(userInvitationSchema.extend({
+        password: z.string().min(8, 'Password must be at least 8 characters long')
+      }), req.body);
+
+      const { email, password, firstName, lastName, role } = signupData;
+
+      // Check if user already exists
+      const existingUsers = await storage.getAllUsers();
+      const existingUser = existingUsers.find(u => u.email === email);
+      
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: 'User with this email already exists' 
+        });
+      }
+
+      // Generate unique ID for new user
+      const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
+      // Create new user
+      const newUser = await storage.createUser({
+        id: uniqueId,
+        email,
+        firstName,
+        lastName,
+        role,
+        password // This will be hashed in storage.createUser
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+
+      res.status(201).json({ 
+        user: userWithoutPassword,
+        message: 'Account created successfully' 
+      });
+    } catch (error) {
+      console.error('Signup error:', error);
+      
+      // Handle validation errors
+      if (error instanceof Error && error.message.startsWith('Validation error:')) {
+        return res.status(400).json({ message: error.message.replace('Validation error: ', '') });
+      }
+      
+      res.status(500).json({ message: 'Failed to create account' });
+    }
+  });
+
   // Local login route
   app.post('/api/auth/local/login', (req, res, next) => {
-    console.log('Login attempt for email:', req.body.email);
-    
     passport.authenticate('local', (err: any, user: any, info: any) => {
       if (err) {
         console.error('Authentication error:', err);
@@ -737,7 +782,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       if (!user) {
-        console.log('Authentication failed:', info?.message || 'Invalid credentials');
         return res.status(401).json({ message: info?.message || 'Invalid credentials' });
       }
 
@@ -756,12 +800,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (saveErr) {
             console.error('Session save error:', saveErr);
           }
-          console.log('Login successful, session saved for user:', user.email);
-          console.log('Session data:', { 
-            userId: req.session.userId, 
-            sessionId: req.sessionID,
-            isAuthenticated: req.session.isAuthenticated
-          });
           return res.json({ user, message: 'Login successful' });
         });
       });
