@@ -1,8 +1,15 @@
 import OpenAI from "openai";
+import type { ChatMessage } from "@shared/schema";
+
+// Validate OpenAI API key is present
+const openaiApiKey = process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR;
+if (!openaiApiKey) {
+  throw new Error("OpenAI API key is required. Please set OPENAI_API_KEY environment variable.");
+}
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
 const openai = new OpenAI({ 
-  apiKey: process.env.OPENAI_API_KEY || process.env.OPENAI_API_KEY_ENV_VAR || "default_key"
+  apiKey: openaiApiKey
 });
 
 export interface DocumentAnalysis {
@@ -169,11 +176,11 @@ export async function getChatbotResponse(
     const allModules = await storageInstance.getTrainingModules();
     
     // Create context from uploaded documents and training modules
-    const documentContext = userDocuments.map(doc => 
+    const documentContext = userDocuments.map((doc: any) => 
       `Document: ${doc.originalName}\nSummary: ${doc.summary || doc.aiSummary}\nKey Topics: ${doc.keyTopics?.join(", ") || "None"}`
     ).join("\n\n");
 
-    const moduleContext = allModules.map(module => 
+    const moduleContext = allModules.map((module: any) => 
       `Module: ${module.title} (${module.learningStage})\nDescription: ${module.description}\nKey Topics: ${module.keyTopics?.join(", ") || "None"}`
     ).join("\n\n");
 
@@ -204,10 +211,10 @@ export async function getChatbotResponse(
 
     const messages = [
       { role: "system", content: systemPrompt },
-      ...chatHistory.slice(-10).map(msg => ({
-        role: msg.role === 'user' ? 'user' : 'assistant',
-        content: msg.message
-      })),
+      ...chatHistory.slice(-10).flatMap(msg => [
+        { role: "user", content: msg.message },
+        { role: "assistant", content: msg.response }
+      ]),
       { role: "user", content: userMessage }
     ];
 

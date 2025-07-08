@@ -132,28 +132,17 @@ export async function setupAuth(app: Express) {
 
 export const isAuthenticated: RequestHandler = async (req, res, next) => {
   try {
-    console.log('Auth check - URL:', req.url);
-    console.log('Auth check - Session ID:', req.sessionID);
-    console.log('Auth check - Full session:', req.session);
-    console.log('Auth check - Session userId:', req.session?.userId);
-    console.log('Auth check - Session isAuthenticated:', req.session?.isAuthenticated);
-    console.log('Auth check - req.user:', !!req.user);
-    console.log('Auth check - req.isAuthenticated():', req.isAuthenticated());
-    console.log('Auth check - Headers:', req.headers.cookie);
-
     // Check for local authentication session first
     if (req.session?.isAuthenticated && req.session?.userId) {
       const user = await storage.getUser(req.session.userId);
       if (user) {
         req.user = user;
-        console.log('Authenticated via local session:', user.email);
         return next();
       }
     }
 
     // Check passport authentication
     if (req.isAuthenticated() && req.user) {
-      console.log('Authenticated via passport:', (req.user as any).email);
       return next();
     }
 
@@ -167,7 +156,6 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
 
       const refreshToken = user.refresh_token;
       if (!refreshToken) {
-        console.log('No refresh token available');
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -181,7 +169,6 @@ export const isAuthenticated: RequestHandler = async (req, res, next) => {
       }
     }
 
-    console.log('Authentication failed - no valid session found');
     return res.status(401).json({ message: "Unauthorized" });
   } catch (error) {
     console.error("Authentication error:", error);

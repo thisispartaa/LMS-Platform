@@ -4,3 +4,15 @@ dist
 server/public
 vite.config.ts.*
 *.tar.gz
+
+# Debug and test files
+*cookies*.txt
+*session*.txt
+*test*.txt
+*debug*.txt
+*demo*.txt
+
+# Environment and config files
+.env
+.env.local
+.env.production
