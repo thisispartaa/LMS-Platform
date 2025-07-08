@@ -22,6 +22,8 @@ import {
 import { eq, and, desc } from "drizzle-orm";
 import { db } from "./db";
 import { getUserId, getUserIdSafe } from "./utils/auth";
+import { validateBody, userInvitationSchema } from "./utils/validation";
+import { z } from "zod";
 import "./types"; // Import type definitions
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -702,6 +704,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Error removing assignment:', error);
       res.status(500).json({ message: 'Failed to remove assignment' });
+    }
+  });
+
+  // Local signup route
+  app.post('/api/auth/local/signup', async (req, res) => {
+    try {
+      // Validate request body
+      const signupData = validateBody(userInvitationSchema.extend({
+        password: z.string().min(8, 'Password must be at least 8 characters long')
+      }), req.body);
+
+      const { email, password, firstName, lastName, role } = signupData;
+
+      // Check if user already exists
+      const existingUsers = await storage.getAllUsers();
+      const existingUser = existingUsers.find(u => u.email === email);
+      
+      if (existingUser) {
+        return res.status(400).json({ 
+          message: 'User with this email already exists' 
+        });
+      }
+
+      // Generate unique ID for new user
+      const uniqueId = `user_${Date.now()}_${Math.random().toString(36).substring(2, 15)}`;
+      
+      // Create new user
+      const newUser = await storage.createUser({
+        id: uniqueId,
+        email,
+        firstName,
+        lastName,
+        role,
+        password // This will be hashed in storage.createUser
+      });
+
+      // Remove password from response
+      const { password: _, ...userWithoutPassword } = newUser;
+
+      res.status(201).json({ 
+        user: userWithoutPassword,
+        message: 'Account created successfully' 
+      });
+    } catch (error) {
+      console.error('Signup error:', error);
+      
+      // Handle validation errors
+      if (error instanceof Error && error.message.startsWith('Validation error:')) {
+        return res.status(400).json({ message: error.message.replace('Validation error: ', '') });
+      }
+      
+      res.status(500).json({ message: 'Failed to create account' });
     }
   });
 
