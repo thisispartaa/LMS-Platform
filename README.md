@@ -1,7 +1,7 @@
-# Amazech's Training Platform
+# LMS Training Platform
 
 ## Overview
-Amazech's Training Platform is an internal AI-powered employee onboarding and training solution designed to improve the learning experience for both new and existing employees. The platform uses GPT-4 to read and understand uploaded documents or videos, generate summaries, create training modules based on a 4-stage learning journey, and produce AI-generated quizzes. It also includes an admin dashboard for managing modules, tracking employee progress, and sending notifications.
+This Training Platform is an internal AI-powered employee onboarding and training solution designed to improve the learning experience for both new and existing employees. The platform uses GPT-4 to read and understand uploaded documents or videos, generate summaries, create training modules based on a 4-stage learning journey, and produce AI-generated quizzes. It also includes an admin dashboard for managing modules, tracking employee progress, and sending notifications.
 
 ## Objectives
 - Improve the employee onboarding and training experience.
@@ -9,12 +9,6 @@ Amazech's Training Platform is an internal AI-powered employee onboarding and tr
 - Automate quiz creation from training content.
 - Enable admins to manage, assign, and track training completion efficiently.
 - Integrate with SharePoint for file storage and Outlook for email notifications.
-
-## Key Findings
-- Automating training module and quiz generation significantly reduces manual workload for trainers and admins.
-- Providing summaries alongside full training material improves knowledge retention and accessibility.
-- AI integration can adapt learning paths to different employee roles and needs.
-- Notification templates allow consistent and timely communication with employees.
 
 ## Methodology
 1. Gathered requirements and created a detailed BRD in collaboration with the Lead Business Analyst.
@@ -38,7 +32,7 @@ Amazech's Training Platform is an internal AI-powered employee onboarding and tr
 - **Version Control:** Git, GitHub
 
 ## Conclusion
-The MVP successfully demonstrates the potential of an AI-powered training platform to improve onboarding and continuous learning within an organization. By combining automated content generation, adaptive learning stages, and integrated communication tools, the platform sets a foundation for scalable and personalized employee development. Future enhancements could include SME content approvals, gamification, advanced analytics, and deeper integrations.
+The MVP successfully demonstrates the potential of an AI-powered training platform to improve onboarding and continuous learning within the organization. By combining automated content generation, adaptive learning stages, and integrated communication tools, the platform sets a foundation for scalable and personalized employee development. Future enhancements could include SME content approvals, gamification, advanced analytics, and deeper integrations.
 
 ## Future Enhancements
 - SME-based content approval workflow.
@@ -53,6 +47,3 @@ The MVP successfully demonstrates the potential of an AI-powered training platfo
 /tests       # Unit and integration tests
 /docs        # Documentation and design files
 ```
-
-## License
-This project is licensed under the MIT License - see the LICENSE file for details.
